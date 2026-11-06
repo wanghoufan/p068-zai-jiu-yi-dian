@@ -43,6 +43,6 @@ Requires JDK 17 and Android SDK 36:
 - Lock-screen/background cues require the foreground service and notification permission; they are not guaranteed if notifications are denied, Do Not Disturb/battery policy intervenes, or the system force-stops the app. Elapsed time remains accurate when returning.
 - Automatic local backups use a user-selected SAF folder, keep the last 7 versions, and can be previewed/restored with a safety checkpoint. Failure paths (write failure, revoked permission, reboot) still need per-device verification.
 - V1.1 main paths verified on Redmi Note 11 5G (Android 11): four tabs, reps, all three charts, delete/restore, V3 export/replace/duplicate-merge, 145% font. Redmi Note 12 Pro (Android 14) verified install, v1→v2 migration, four tabs, and old data retention. Redmi Note 12T Pro (Android 15) verified install/hash/launch/migration; its full dual-mode flow is NOT_RUN.
-- Test-signed; not published to any store; no commit/push.
+- Test-signed; not published to any store; source committed and pushed to `main` (`693f685`).
 
 See `docs/qa/QA-REPORT-P068-V1.1-R2.md` and `docs/qa/产品验收追踪矩阵-P068-V1.1-R2.md` for evidence.
