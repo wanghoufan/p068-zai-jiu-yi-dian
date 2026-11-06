@@ -1,0 +1,12 @@
+# P068 自动测试结果（2026-11-06）
+命令: ./gradlew :app:testDebugUnitTest --console=plain
+结果: BUILD SUCCESSFUL
+统计: tests=24 failures=0 errors=0
+测试类:
+- StatsTest（KPI/周分组/空周/筛选/频率分组/跨午夜）
+- TimerMathTest（单调时钟/暂停恢复/超时/重启识别/中断恢复/检查点/每3分钟节点）
+- BackupCodecTest（导出导入/校验摘要/版本/引用/重复 UUID/删除标记/合并冲突）
+- ProjectDaoTest（Robolectric+Room：含历史项目 UPDATE 不破外键；REPLACE 会被拒绝）
+构建: ./gradlew :app:assembleDebug --console=plain
+APK: dist/P068-zai-jiu-yi-dian-v1.0.0-debug.apk (15,670,066 bytes)
+SHA-256: 15cc5d3e133e256b7c0dcff38d55e0644e9e524e3ea74649ca0d17f93e9f6e5c

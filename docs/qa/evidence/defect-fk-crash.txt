@@ -1,0 +1,14 @@
+# 缺陷记录：归档/改名含历史项目导致崩溃（已修复）
+时间: 2026-11-06 08:39
+设备: Redmi Note 12 Pro (Android 15 / SDK 35)
+现象: 在项目选择器中确认“归档项目”后应用进程退出。
+logcat (crash buffer) 关键行:
+  Process: com.wanghoufan.zaijiuyidian
+  android.database.sqlite.SQLiteConstraintException: FOREIGN KEY constraint failed (code 1811 SQLITE_CONSTRAINT_TRIGGER)
+  at com.wanghoufan.zaijiuyidian.data.db.ProjectDao_Impl.upsert$lambda$0(ProjectDao_Impl.kt:77)
+根因: ProjectDao.upsert 使用 INSERT OR REPLACE；SQLite 的 REPLACE 会先删除原行再插入，
+      项目行被瞬时删除时触发 sessions.projectId -> projects.id 的 RESTRICT 外键约束。
+修复: 对已存在项目的改名/目标/预设/归档/恢复改用 @Update（update），新增项目仍用 upsert；
+      增加“至少保留一个可用项目”与“已归档项目不能开始训练”的守卫。
+回归: ProjectDaoTest（Robolectric）覆盖 update-with-history 与 replace-with-history 被拒绝；
+      真机复测归档成功且进程存活（docs/qa/evidence/49-project-archived.png）。

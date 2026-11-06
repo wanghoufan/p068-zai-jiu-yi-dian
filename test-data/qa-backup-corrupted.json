@@ -1,0 +1,59 @@
+{
+  "app": "duration-progress",
+  "version": 1,
+  "exportedAt": "2026-11-06T07:30:00+08:00",
+  "appVersion": "1.0.0",
+  "projectId": "proj-plank",
+  "projects": [
+    {
+      "id": "proj-plank",
+      "name": "平板支撑",
+      "defaultTargetSec": 1500,
+      "presetsSec": [
+        900,
+        1200,
+        1500
+      ],
+      "archivedAt": null,
+      "createdAt": 1788224400000,
+      "updatedAt": 1788224400000
+    },
+    {
+      "id": "proj-squat",
+      "name": "深蹲",
+      "defaultTargetSec": 600,
+      "presetsSec": [
+        300,
+        600,
+        900
+      ],
+      "archivedAt": null,
+      "createdAt": 1788224700000,
+      "updatedAt": 1788224700000
+    }
+  ],
+  "sessions": [
+    {
+      "id": "sess-000-proj-plank",
+      "projectId": "proj-plank",
+      "startedAt": 1789469700000,
+      "endedAt": 1789470600000,
+      "endedAtIso": "2026-09-15T19:10:00+08:00",
+      "targetSec": 1200,
+      "actualSec": 9999,
+      "pauseCount": 0,
+      "pausedSec": 0,
+      "source": "timer",
+      "note": "",
+      "createdAt": 1789470600000,
+      "updatedAt": 1789470600000,
+      "deletedAt": null
+    }
+  ],
+  "settings": {
+    "theme": "light",
+    "soundEnabled": true,
+    "vibrationEnabled": true
+  },
+  "checksum": "48a71b75a5960158a2491cd61739ddebe35088451d2295b606f658d4b499f730"
+}
