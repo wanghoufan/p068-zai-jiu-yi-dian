@@ -1,0 +1,4 @@
+# Note 12T Pro 锁屏语音（Android 15）
+--------- beginning of main
+11-06 14:01:09.131 14349 14349 I P068Voice: cue=INTERVAL minute=1 voicePlayed=false service=true sound=true voice=true
+11-06 14:01:09.262 14349 14349 I P068Voice: service cue interval=1 target=false voicePlayed=true voice=true sound=true

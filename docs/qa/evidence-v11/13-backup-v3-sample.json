@@ -1,0 +1,150 @@
+{
+  "app": "duration-progress",
+  "version": 3,
+  "exportedAt": "2026-11-06T22:13:36.75+08:00",
+  "appVersion": "1.1.0",
+  "projectId": "a4362f0d-5197-4663-aebf-94855513628b",
+  "projects": [
+    {
+      "id": "656bb418-d991-41ad-a431-61eb4a3854d2",
+      "name": "练习 A",
+      "defaultTargetSec": 1500,
+      "presetsSec": [
+        900,
+        1200,
+        1500
+      ],
+      "archivedAt": null,
+      "createdAt": 1793943991059,
+      "updatedAt": 1793943991059,
+      "mode": "TIME",
+      "plannedSets": 3,
+      "targetRepsPerSet": 10
+    },
+    {
+      "id": "a4362f0d-5197-4663-aebf-94855513628b",
+      "name": "PullUp",
+      "defaultTargetSec": 900,
+      "presetsSec": [
+        600,
+        900,
+        1200,
+        1500
+      ],
+      "archivedAt": null,
+      "createdAt": 1793973943419,
+      "updatedAt": 1793973943419,
+      "mode": "REPS",
+      "plannedSets": 3,
+      "targetRepsPerSet": 10
+    }
+  ],
+  "sessions": [
+    {
+      "id": "4642f382-8689-4b19-8d29-2c325b7d2691",
+      "projectId": "a4362f0d-5197-4663-aebf-94855513628b",
+      "startedAt": null,
+      "endedAt": 1793974016082,
+      "endedAtIso": "2026-11-06T22:06:56.082+08:00",
+      "targetSec": 0,
+      "actualSec": 0,
+      "pauseCount": 0,
+      "pausedSec": 0,
+      "source": "reps",
+      "note": "",
+      "createdAt": 1793974016082,
+      "updatedAt": 1793974083498,
+      "deletedAt": null,
+      "mode": "REPS",
+      "plannedSets": 3,
+      "targetRepsPerSet": 10,
+      "sets": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "id": "84599815-b9b9-47e8-a2c5-a9a656ba9238",
+      "projectId": "a4362f0d-5197-4663-aebf-94855513628b",
+      "startedAt": null,
+      "endedAt": 1793974314440,
+      "endedAtIso": "2026-11-06T22:11:54.44+08:00",
+      "targetSec": 0,
+      "actualSec": 0,
+      "pauseCount": 0,
+      "pausedSec": 0,
+      "source": "reps",
+      "note": "",
+      "createdAt": 1793974314440,
+      "updatedAt": 1793974372087,
+      "deletedAt": null,
+      "mode": "REPS",
+      "plannedSets": 3,
+      "targetRepsPerSet": 10,
+      "sets": [
+        10,
+        10
+      ]
+    },
+    {
+      "id": "9d55863e-83e4-4d67-98df-296e5e1543de",
+      "projectId": "656bb418-d991-41ad-a431-61eb4a3854d2",
+      "startedAt": 1793974103914,
+      "endedAt": 1793974119944,
+      "endedAtIso": "2026-11-06T22:08:39.944+08:00",
+      "targetSec": 1500,
+      "actualSec": 14,
+      "pauseCount": 1,
+      "pausedSec": 1,
+      "source": "timer",
+      "note": "",
+      "createdAt": 1793974129837,
+      "updatedAt": 1793974129837,
+      "deletedAt": null,
+      "mode": "TIME",
+      "plannedSets": 3,
+      "targetRepsPerSet": 10,
+      "sets": []
+    },
+    {
+      "id": "d59d088b-1054-4a15-992b-2d1de92be126",
+      "projectId": "a4362f0d-5197-4663-aebf-94855513628b",
+      "startedAt": null,
+      "endedAt": 1793974282291,
+      "endedAtIso": "2026-11-06T22:11:22.291+08:00",
+      "targetSec": 0,
+      "actualSec": 0,
+      "pauseCount": 0,
+      "pausedSec": 0,
+      "source": "reps",
+      "note": "",
+      "createdAt": 1793974282291,
+      "updatedAt": 1793974282291,
+      "deletedAt": null,
+      "mode": "REPS",
+      "plannedSets": 3,
+      "targetRepsPerSet": 10,
+      "sets": [
+        10,
+        10,
+        10,
+        10
+      ]
+    }
+  ],
+  "settings": {
+    "theme": "light",
+    "soundEnabled": true,
+    "vibrationEnabled": true,
+    "voiceEnabled": true,
+    "fontScalePercent": 115,
+    "lastRangeDays": null,
+    "lastChart": "SCATTER",
+    "lastProjectFilter": "current",
+    "lastTimeProjectId": "656bb418-d991-41ad-a431-61eb4a3854d2",
+    "lastRepsProjectId": "a4362f0d-5197-4663-aebf-94855513628b"
+  },
+  "draft": null,
+  "checksum": "5f79772ed98786b8243d8aaefc7ec25dcf3997b0e9267ad8e7b1901af45ec216"
+}

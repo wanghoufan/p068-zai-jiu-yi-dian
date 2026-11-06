@@ -16,44 +16,45 @@
 
 ## §1 当前进展
 
-- Captured at：2026-11-06 09:55
+- Captured at：2026-11-06 22:52
 - PROJECT_PHASE：DEVELOP
-- PLAN_VERSION：`docs/plan/P068-Android-Development-Plan-V1.2.md`
+- PLAN_VERSION：`docs/plan/P068-Android-Dual-Mode-Training-V1.1-R2-Final-Approved-Plan.md`
 - PLAN_READINESS_SCORE：（不适用；用户批准版开发计划直接作为 DEV_BASELINE）
 - PLAN_GATE：APPROVED
-- DEV_BASELINE：P068-Android-Development-Plan-V1.2
-- CHANGE_REQUEST：NONE（用户追加：应用内字体大小、开始训练反馈、每 3 分钟语音提醒；均已实现并真机验证）
-- Stage ID：Android V1.0 真机验收
-- 剩 P0：**AC-20 用户签收未完成**（首次发布签收，只有用户能做）
-- 当前 Task：T11（待用户签收）；T01–T10 已完成
+- DEV_BASELINE：P068-Android-Dual-Mode-Training-V1.1-R2-Final-Approved-Plan
+- CHANGE_REQUEST：NONE（旧三 Tab V1.1 已被最终 R2 四 Tab 取代）
+- Stage ID：Android V1.1-R2 双模式与完整历史
+- 剩 P0：**AC02/AC12/AC13/AC14 为 PARTIAL，AC15 用户签收 OPEN**；V1 AC-20 与 R2 AC-R2-12 仍待签收
+- 当前 Task：V11R2-T09 交付与待签收；T01–T08 已实现/验收
 - 执行链/Session：主开发者模式（用户口令「你是主开发者·连续推进」），未走 ORCA 角色派工链
 - 本轮已完成：
-  - Kotlin + Compose + Room + DataStore 应用：三 Tab、计时状态机、历史增删改查/撤销/最近删除、三类图表、JSON/CSV 备份与合并/覆盖、深色模式、应用内字体大小。
-  - 开始训练震动+语音“开始训练”；有效训练每 3 分钟语音播报；达标语音；全部为本地 WAV（SoundPool），离线可用，可在设置单独关闭。
-  - 24/24 自动测试通过（含 Robolectric DAO 外键回归、每 3 分钟节点）。
-  - 三台连接手机均已推送同一 APK（12 Pro / 12T Pro / 11 5G），回读哈希一致并成功启动。
-  - 交付 APK：`dist/P068-zai-jiu-yi-dian-v1.0.0-debug.apk`，15,670,066 字节，SHA-256 `15cc5d3e133e256b7c0dcff38d55e0644e9e524e3ea74649ca0d17f93e9f6e5c`（与真机已安装包一致）。
-  - 真机（Redmi Note 12 Pro / Android 14）完成：离线、锁屏计时、真实重启恢复、导出→卸载→重装→导入、重复/损坏导入、深色、大字体/窄屏。
-  - 修复 7 项缺陷（FK 崩溃、结束计暂停、撤销入口、预设单位、深色按钮对比度、最后项目归档守卫、字体过小）。
-  - 交付 APK + SHA-256 + 验收矩阵 + QA 报告。
-
+  - 四 Tab：时长/次数/历史/设置；TIME 原倒计时、暂停/继续/超时/语音/保存保留。
+  - 计次：项目模式、3×10/4×12、逐组实际次数、修改/撤销/超计划追加/提前结束/备注/草稿恢复；草稿不进历史。
+  - Room v1→v2 显式迁移：Project/Session 模式与计次计划、rep_sets、rep_draft；两台旧设备 `install -r` 后旧项目保留。
+  - 完整历史：三图（趋势/周频率/频率关系）+ 关系表；TIME 分钟、REPS 总次数/最佳单组、全部项目只合并次数/天数；筛选/补录/逐组编辑/软删/撤销/恢复。
+  - 备份 V3：模式、计划快照、每组 sets、草稿、lastTime/lastReps；V1/V2 原算法兼容；手动导出/覆盖/重复合并真机通过，安全点已写。
+  - 32/32 自动测试通过（含迁移、V3 Repository、计次统计、V1/V2 兼容）。
+  - 修复 2 项本轮 P0：V3 恢复后 sets 未即时回填、改计划后下一组建议值不更新。
+  - 交付 APK：`dist/P068-zai-jiu-yi-dian-v1.1.0-debug.apk`，16,033,544 字节，SHA-256 `3d81a707df8473a1e54365c7a815cc4ff359602c0a1812bc5e78a481d1055919`，versionCode 3 / 1.1.0。
+  - Note 11 5G 主路径完整；Note 12 Pro 安装/迁移/四 Tab/旧数据保留；Note 12T 已连接并完成安装/哈希/启动/v1→v2 迁移，完整双模式链路未跑（另一应用抢占前台）。
+  - 三台均已推送 1.1.0 并回读 base.apk 哈希一致；记录见 `docs/qa/evidence-v11/push-2026-11-06-v1.1.0.txt`。
 ## §2 下一步
 
-- 下一步（Next Single Action）：请用户亲身体验一次训练与备份恢复，决定是否签收 AC-20。
+- 下一步（Next Single Action）：用户亲身体验时长、计次、历史三图与 V3 备份恢复后决定是否签收 V11R2-AC15。
 - 人要拍什么板：
-  1. 是否签收 V1.0（首次发布）。
-  2. 是否要正式签名/公开分发/上架（当前是 DEBUG 测试签名，未获授权不发布）。
-- permission_request：无待批授权；commit/push 未执行，等明确指令。
+  1. 是否签收 V1.1-R2。
+  2. 是否补测 12T/12 Pro 完整计次链路、V3 自动备份轮转、深色/窄屏与锁屏语音，再决定正式分发。
+- permission_request：本轮未 commit/push；无待批授权。
 
 ## §3 未完成
 
 - 未闭环评审意见：无独立 reviewer/qa 角色链（主开发者模式）；自审与真机 QA 证据已落 `docs/qa/`。
-- 产品验收：`docs/qa/产品验收追踪矩阵-P068-V1.0.md`；AC-01–AC-19 PASS，**AC-20 OPEN（待用户签收）**。
-- Git：本轮交付已提交 `23232a4` 并推送 `origin/main`；本地模型账本未入公开仓。
-- 用户签收：触发依据=首次发布；证据包=`docs/qa/evidence/` + `dist/`；签收人=用户；结论=**待签收**。
-- docs 落盘清单：`README.md`、`README.en.md`、`docs/architecture-facts.md`、`docs/risks.md`、`docs/qa/产品验收追踪矩阵-P068-V1.0.md`、`docs/qa/QA-REPORT-P068-V1.0.md`（含三机推送表）、本文件、`经验一句话.md`、`agent.md`。
-- 收尾记一笔：文档已对齐实际代码与真机结果；交付前已清空真机应用数据（避免合成 QA 数据被当成个人历史）；阶段复盘候选（S1–S4）待用户选择后再决定是否建档与 jcp。
-- 阶段复盘：踩坑已写入 `agent.md`；用户已选 S4「安卓语音方案」，中央 skill `android-offline-voice-cues-local-zh` 已建档、验证、登记并分发 11/11 Agent（`diff -rq` 全 SAME）；其余 S1/S2/S3 未选、未建档；本轮自动化候选为空。
+- 产品验收：`docs/qa/产品验收追踪矩阵-P068-V1.1-R2.md`；AC01/03/04/05/06/07/08/09/10/11 PASS，**AC02/12/13/14 PARTIAL，AC15 OPEN（待签收）**。
+- Git：V1.1 源码、文档、证据均**未 commit / 未 push**；V1.0 历史提交保持 `d992f36` / `3109039` 不变。
+- 用户签收：触发依据=首次发布/V1.1 验收；证据包=`docs/qa/evidence-v11/` + `dist/`；签收人=用户；结论=**待签收**。
+- docs 落盘清单：`README.md`、`README.en.md`、`docs/architecture-facts.md`、`docs/risks.md`、`docs/qa/产品验收追踪矩阵-P068-V1.1-R2.md`、`docs/qa/QA-REPORT-P068-V1.1-R2.md`、`docs/qa/evidence-v11/`、本文件、`agent.md`、`经验一句话.md`。
+- 收尾记一笔：Note 11 保留合成 QA 项目 PullUp 与 5 条记录（4 计次 + 1 计时，含 4×12 计划样本）；Note 12 Pro 保留 PullUp 空项目；未擅自清除原有“练习 A”。R2 旧矩阵/报告仍保留。
+- 阶段复盘（2026-11-06 第三轮）：V1.1 新增踩坑（恢复子表未回填、改计划建议值、前台被抢占）已入 `agent.md`；自动化候选为空；skill 候选 S1 `android-room-versioned-backup-restore-local-zh` 待确认；jcp 未执行（无 commit/push 授权）。
 
 ## §4 红线
 
@@ -64,8 +65,8 @@
 
 ## §5 三日流水
 
-- 2026-11-06：V1.0 实现、自动测试、真机验收与备份恢复闭环完成；三台连接手机（12 Pro / 12T Pro / 11 5G）推送同一 APK 并回读哈希一致；AC-20 待用户签收；APK 与证据已落盘。
+- 2026-11-06：V1.1-R2 完成四 Tab、计次训练、完整三图历史、Room v1→v2、V3 备份；32/32 测试；Note 11 主路径与 Note 12 Pro 迁移/四 Tab；APK 1.1.0 交付；AC02/12/13/14 部分与签收待闭环。
 
 ## §6 接续提示词
 
-先读本文件 §0–§3，再读 `docs/qa/QA-REPORT-P068-V1.0.md` 与验收矩阵；当前只差用户签收（AC-20），不要自行宣布完工或发布。新需求先核实是否改变已批准交互，再改代码并补证据。
+先读本文件 §0–§3、V1.1 验收矩阵与 evidence-v11；四 Tab/计次/三图/V3 已交付，只差 12T、V3 自动备份失败专项与用户签收，不得自行宣布完工、提交或发布。新需求先核实是否改变已批准交互，再改代码并补证据。

@@ -43,6 +43,8 @@ class BackupCodecTest {
         theme = ThemeMode.DARK,
         soundEnabled = false,
         vibrationEnabled = true,
+        voiceEnabled = false,
+        fontScalePercent = 130,
         lastRangeDays = 30,
         lastChart = ChartMode.WEEKLY,
         lastProjectFilter = "all"
@@ -60,7 +62,14 @@ class BackupCodecTest {
         assertEquals(1, parsed.sessions[0].pauseCount)
         assertEquals("dark", parsed.settings.theme)
         assertEquals(false, parsed.settings.soundEnabled)
+        assertEquals(false, parsed.settings.voiceEnabled)
+        assertEquals(130, parsed.settings.fontScalePercent)
+        assertEquals(30, parsed.settings.lastRangeDays)
+        assertEquals("WEEKLY", parsed.settings.lastChart)
+        assertEquals("all", parsed.settings.lastProjectFilter)
         assertEquals("p1", parsed.projectId)
+        assertEquals(3, parsed.version)
+        assertEquals("TIME", parsed.sessions[0].mode)
     }
 
     @Test
@@ -79,7 +88,7 @@ class BackupCodecTest {
     fun wrong_app_or_version_is_rejected() {
         val json = BackupCodec.encode(listOf(project), listOf(session), "p1", settings, "1.0.0", 1_700_001_000_000L)
         try {
-            BackupCodec.parse(json.replace("\"version\": 1", "\"version\": 99"))
+            BackupCodec.parse(json.replace("\"version\": 3", "\"version\": 99"))
             fail("Expected BackupException")
         } catch (e: BackupException) {
             assertTrue(e.message!!.contains("版本"))
@@ -139,10 +148,93 @@ class BackupCodecTest {
     }
 
     @Test
+    fun legacy_v1_backup_still_validates_and_uses_defaults_for_new_preferences() {
+        val raw = javaClass.getResource("/qa-backup-v1.json")!!.readText()
+        val parsed = BackupCodec.parse(raw).data
+        assertEquals(1, parsed.version)
+        assertEquals("light", parsed.settings.theme)
+        assertEquals(true, parsed.settings.soundEnabled)
+        assertEquals(true, parsed.settings.voiceEnabled)
+        assertEquals(115, parsed.settings.fontScalePercent)
+        assertEquals(null, parsed.settings.lastRangeDays)
+        assertEquals("TREND", parsed.settings.lastChart)
+        assertEquals(27, parsed.sessions.size)
+    }
+
+    @Test
     fun tombstone_sessions_survive_roundtrip() {
         val deleted = session.copy(deletedAt = 1_700_000_800_000L)
         val json = BackupCodec.encode(listOf(project), listOf(deleted), "p1", settings, "1.0.0", 1_700_001_000_000L)
         val parsed = BackupCodec.parse(json).data
         assertEquals(1_700_000_800_000L, parsed.sessions[0].deletedAt)
+    }
+
+    @Test
+    fun v3_reps_sets_and_draft_roundtrip() {
+        val repProject = ProjectEntity(
+            id = "r1",
+            name = "引体向上",
+            defaultTargetSec = 900,
+            presetsSec = "600,900",
+            createdAt = 1_700_000_000_000L,
+            updatedAt = 1_700_000_000_000L,
+            mode = ProjectEntity.MODE_REPS,
+            plannedSets = 4,
+            targetRepsPerSet = 10
+        )
+        val repSession = SessionEntity(
+            id = "rs1",
+            projectId = "r1",
+            startedAt = null,
+            endedAt = 1_700_000_600_000L,
+            targetSec = 0,
+            actualSec = 0,
+            source = SessionEntity.SOURCE_REPS,
+            note = "最后一组少两次",
+            createdAt = 1_700_000_600_000L,
+            updatedAt = 1_700_000_600_000L,
+            mode = SessionEntity.MODE_REPS,
+            plannedSets = 4,
+            targetRepsPerSet = 10
+        )
+        val draft = com.wanghoufan.zaijiuyidian.data.backup.BackupDraft(
+            projectId = "r1",
+            plannedSets = 3,
+            targetRepsPerSet = 10,
+            sets = listOf(10, 9),
+            nextReps = 10,
+            touchedAt = 1_700_000_700_000L
+        )
+        val json = BackupCodec.encode(
+            listOf(repProject),
+            listOf(repSession),
+            "r1",
+            settings,
+            "1.1.0",
+            1_700_001_000_000L,
+            repSets = mapOf("rs1" to listOf(12, 10, 10, 8)),
+            draft = draft
+        )
+        val parsed = BackupCodec.parse(json).data
+        assertEquals(3, parsed.version)
+        assertEquals("REPS", parsed.projects[0].mode)
+        assertEquals(4, parsed.projects[0].plannedSets)
+        assertEquals(listOf(12, 10, 10, 8), parsed.sessions[0].sets)
+        assertEquals(0, parsed.sessions[0].actualSec)
+        assertEquals(listOf(10, 9), parsed.draft?.sets)
+        assertEquals(10, parsed.draft?.nextReps)
+    }
+
+    @Test
+    fun v2_backup_remains_valid_and_defaults_to_time_mode() {
+        val v3 = BackupCodec.parse(
+            BackupCodec.encode(listOf(project), listOf(session), "p1", settings, "1.0.0", 1_700_001_000_000L)
+        ).data
+        val v2 = v3.copy(version = 2, draft = null, checksum = "")
+        val parsed = BackupCodec.parse(BackupCodec.encodeData(v2)).data
+        assertEquals(2, parsed.version)
+        assertEquals("TIME", parsed.projects[0].mode)
+        assertEquals("TIME", parsed.sessions[0].mode)
+        assertEquals(emptyList<Int>(), parsed.sessions[0].sets)
     }
 }

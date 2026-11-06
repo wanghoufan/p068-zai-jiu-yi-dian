@@ -1,6 +1,7 @@
 package com.wanghoufan.zaijiuyidian
 
 import com.wanghoufan.zaijiuyidian.domain.Stats
+import com.wanghoufan.zaijiuyidian.domain.TrainingMode
 import com.wanghoufan.zaijiuyidian.domain.TrainingSession
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -149,5 +150,89 @@ class StatsTest {
         val list = listOf(session("late", endedMonday, actualSec = 1200))
         val weeks = Stats.weekly(list, zone)
         assertEquals(epoch(2026, 10, 12, 0, 0) - 0, weeks.single().weekStartMs)
+    }
+
+    private fun repSession(
+        id: String,
+        endedAt: Long,
+        sets: List<Int>,
+        plannedSets: Int = sets.size,
+        targetReps: Int = 10,
+        projectId: String = "r1"
+    ) = TrainingSession(
+        id = id,
+        projectId = projectId,
+        startedAt = null,
+        endedAt = endedAt,
+        targetSec = 0,
+        actualSec = 0,
+        pauseCount = 0,
+        pausedSec = 0,
+        source = "reps",
+        note = "",
+        createdAt = endedAt,
+        updatedAt = endedAt,
+        mode = TrainingMode.REPS,
+        plannedSets = plannedSets,
+        targetRepsPerSet = targetReps,
+        sets = sets
+    )
+
+    @Test
+    fun reps_kpi_matches_hand_calculated_week_sample() {
+        val list = listOf(
+            repSession("a", epoch(2026, 10, 5, 10, 0), listOf(10, 10, 10), plannedSets = 3),
+            repSession("b", epoch(2026, 10, 7, 10, 0), listOf(10, 10, 10, 10), plannedSets = 4),
+            repSession("c", epoch(2026, 10, 9, 10, 0), listOf(12, 10, 10, 8), plannedSets = 4),
+            repSession("d", epoch(2026, 10, 11, 10, 0), listOf(10, 10, 10, 10, 10), plannedSets = 5)
+        )
+        val kpi = Stats.repsKpi(list)
+        assertEquals(4, kpi.count)
+        assertEquals(160, kpi.totalReps)
+        assertEquals(50, kpi.bestSessionTotal)
+        assertEquals(12, kpi.bestSet)
+        assertEquals(5, kpi.maxSets)
+
+        val weeks = Stats.valueWeekly(list, TrainingMode.REPS, zone)
+        assertEquals(1, weeks.size)
+        assertEquals(4, weeks[0].count)
+        assertEquals(40.0, weeks[0].avgValue!!, 0.001)
+        assertEquals(4, weeks[0].activeDays)
+    }
+
+    @Test
+    fun mixed_scope_only_combines_counts_days_and_types() {
+        val list = listOf(
+            session("t1", epoch(2026, 10, 5, 10, 0), projectId = "p1", actualSec = 600),
+            session("t2", epoch(2026, 10, 5, 12, 0), projectId = "p1", actualSec = 900),
+            repSession("r1", epoch(2026, 10, 5, 18, 0), listOf(10, 10, 10)),
+            repSession("r2", epoch(2026, 10, 6, 18, 0), listOf(8, 8))
+        )
+        val kpi = Stats.mixedKpi(list, zone)
+        assertEquals(4, kpi.count)
+        assertEquals(2, kpi.days)
+        assertEquals(2, kpi.timeCount)
+        assertEquals(2, kpi.repsCount)
+
+        val weekly = Stats.valueWeekly(list, null, zone)
+        assertEquals(1, weekly.size)
+        assertEquals(4, weekly[0].count)
+        assertEquals(2.0, weekly[0].avgValue!!, 0.001)
+        assertEquals(2, weekly[0].activeDays)
+    }
+
+    @Test
+    fun reps_group_rows_use_actual_total_not_planned() {
+        val list = listOf(
+            repSession("a", epoch(2026, 10, 5, 10, 0), listOf(10, 10, 10), plannedSets = 3),
+            repSession("b", epoch(2026, 10, 6, 10, 0), listOf(10, 10, 10, 10), plannedSets = 4),
+            repSession("c", epoch(2026, 10, 12, 10, 0), listOf(12, 10, 10, 8, 5), plannedSets = 4)
+        )
+        val rows = Stats.valueGroups(list, TrainingMode.REPS, zone)
+        assertEquals(listOf(1, 2), rows.map { it.perWeek })
+        assertEquals(45.0, rows[0].avgValue!!, 0.001)
+        assertEquals(35.0, rows[1].avgValue!!, 0.001)
+        assertEquals(1, rows[0].sessions)
+        assertEquals(2, rows[1].sessions)
     }
 }

@@ -1,0 +1,13 @@
+# 锁屏/后台语音节点（本轮真机 logcat 观察记录）
+# 说明：原始 logcat buffer 被后续重装清空；以下为本轮从设备 logcat 实际输出的抄录。
+# Redmi Note 12 Pro（Android 14），长训练目标 25 分钟，期间暂停 30 秒、锁屏/切后台：
+11-06 13:05:43.996 I P068Voice: service cue interval=3 target=false voicePlayed=true voice=true sound=true
+11-06 13:08:43.816 I P068Voice: service cue interval=4 target=false voicePlayed=true voice=true sound=true
+11-06 13:11:43.756 I P068Voice: service cue interval=5 target=false voicePlayed=true voice=true sound=true
+11-06 13:14:43.872 I P068Voice: service cue interval=6 target=false voicePlayed=true voice=true sound=true
+11-06 13:17:43.554 I P068Voice: service cue interval=7 target=false voicePlayed=true voice=true sound=true
+11-06 13:20:43.631 I P068Voice: service cue interval=8 target=false voicePlayed=true voice=true sound=true
+11-06 13:21:43.916 I P068Voice: service cue interval=0 target=true voicePlayed=true voice=true sound=true
+# 同时 UI 层日志 cue=INTERVAL ... voicePlayed=false service=true，证明前台没有重复播放。
+# Redmi Note 11 5G（Android 11），锁屏 3 分钟：
+11-06 13:10:49.973 I P068Voice: service cue interval=1 target=false voicePlayed=true voice=true sound=true

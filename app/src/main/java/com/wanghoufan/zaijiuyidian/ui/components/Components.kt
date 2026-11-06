@@ -286,7 +286,8 @@ fun BottomNav(current: Tab, onSelect: (Tab) -> Unit) {
             horizontalArrangement = Arrangement.SpaceAround
         ) {
             listOf(
-                Triple(Tab.TRAIN, "训练", NavKind.TIMER),
+                Triple(Tab.TIME, "时长", NavKind.TIMER),
+                Triple(Tab.REPS, "次数", NavKind.REPS),
                 Triple(Tab.HISTORY, "历史", NavKind.CHART),
                 Triple(Tab.SETTINGS, "设置", NavKind.SETTINGS)
             ).forEach { (tab, label, kind) ->
@@ -314,7 +315,7 @@ fun BottomNav(current: Tab, onSelect: (Tab) -> Unit) {
     }
 }
 
-enum class NavKind { TIMER, CHART, SETTINGS }
+enum class NavKind { TIMER, REPS, CHART, SETTINGS }
 
 @Composable
 private fun NavIcon(kind: NavKind, color: Color) {
@@ -328,6 +329,13 @@ private fun NavIcon(kind: NavKind, color: Color) {
                 drawLine(color, Offset(w / 2, h * 0.56f), Offset(w * 0.68f, h * 0.40f), strokeWidth = stroke.width, cap = StrokeCap.Round)
                 drawLine(color, Offset(w * 0.36f, h * 0.06f), Offset(w * 0.64f, h * 0.06f), strokeWidth = stroke.width, cap = StrokeCap.Round)
                 drawLine(color, Offset(w / 2, h * 0.06f), Offset(w / 2, h * 0.18f), strokeWidth = stroke.width, cap = StrokeCap.Round)
+            }
+            NavKind.REPS -> {
+                val baseline = h * 0.5f
+                drawLine(color, Offset(w * 0.16f, baseline), Offset(w * 0.84f, baseline), strokeWidth = stroke.width, cap = StrokeCap.Round)
+                listOf(0.3f, 0.5f, 0.7f).forEach { x ->
+                    drawLine(color, Offset(w * x, h * 0.28f), Offset(w * x, h * 0.72f), strokeWidth = stroke.width, cap = StrokeCap.Round)
+                }
             }
             NavKind.CHART -> {
                 val baseline = h * 0.88f

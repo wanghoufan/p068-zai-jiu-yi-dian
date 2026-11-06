@@ -1,0 +1,34 @@
+# 自动备份文件（真机 /sdcard/P068Backup）
+-rw-rw---- 1 u0_a181 media_rw   826 2026-11-06 13:39 zjyd-auto-20260101-000008.json
+-rw-rw---- 1 u0_a181 media_rw   826 2026-11-06 12:58 zjyd-auto-20261106-125831.json
+-rw-rw---- 1 u0_a181 media_rw  1302 2026-11-06 13:22 zjyd-auto-20261106-132251.json
+-rw-rw---- 1 u0_a181 media_rw  1302 2026-11-06 13:34 zjyd-auto-20261106-133427.json
+-rw-rw---- 1 u0_a181 media_rw  1301 2026-11-06 13:39 zjyd-auto-20261106-133944.json
+-rw-rw---- 1 u0_a181 media_rw 13526 2026-11-06 13:41 zjyd-auto-20261106-134144.json
+-rw-rw---- 1 u0_a181 media_rw  1301 2026-11-06 13:42 zjyd-auto-20261106-134249.json
+-rw-rw---- 1 u0_a181 media_rw  1303 2026-11-06 13:34 zjyd-safety-20261106-133425.json
+-rw-rw---- 1 u0_a181 media_rw 13526 2026-11-06 13:42 zjyd-safety-20261106-134248.json
+
+# 备份元数据（13:22 长训练）
+{
+  "version": 2,
+  "sessions": [
+    {
+      "targetSec": 1500,
+      "actualSec": 1553,
+      "pauseCount": 1,
+      "pausedSec": 30,
+      "source": "timer"
+    }
+  ],
+  "settings": {
+    "theme": "light",
+    "soundEnabled": true,
+    "vibrationEnabled": true,
+    "voiceEnabled": true,
+    "fontScalePercent": 115,
+    "lastRangeDays": null,
+    "lastChart": "TREND",
+    "lastProjectFilter": "current"
+  }
+}

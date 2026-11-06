@@ -40,8 +40,11 @@ fun SettingsScreen(
 ) {
     val p = AppTheme.palette
     val project = state.selectedProject
+    val isReps = project?.isReps == true
     val presetDetail = if (project == null) {
         "暂无项目，请先新建"
+    } else if (isReps) {
+        "${project.name} · 默认 ${project.plannedSets} 组 × ${project.targetRepsPerSet} 次"
     } else {
         val presets = if (project.presetsSec.isEmpty()) {
             "尚未设置档位"
@@ -70,10 +73,12 @@ fun SettingsScreen(
             )
             DividerLine()
             SettingsRow(
-                name = "预设目标",
+                name = if (isReps) "计次默认计划" else "预设目标",
                 detail = presetDetail,
                 trailing = {
-                    TextAction("编辑　›") { vm.openSheet(Sheet.PresetEditor) }
+                    TextAction("编辑　›") {
+                        vm.openSheet(if (isReps) Sheet.RepsDefaultsEditor else Sheet.PresetEditor)
+                    }
                 }
             )
             DividerLine()
@@ -95,7 +100,7 @@ fun SettingsScreen(
             DividerLine()
             SettingsRow(
                 name = "语音提醒",
-                detail = "应用在前台时：开始、每 3 分钟、达到目标播报",
+                detail = "开始、每 3 分钟、达标播报；锁屏/后台也会继续（系统允许时）",
                 trailing = {
                     AppSwitch(state.settings.voiceEnabled) { vm.toggleVoice() }
                 }
@@ -124,7 +129,24 @@ fun SettingsScreen(
         }
 
         SettingsGroupTitle("数据管理")
+        val backupDetail = when {
+            !state.settings.autoBackupEnabled || state.settings.autoBackupTreeUri.isNullOrBlank() ->
+                "自动备份未开启 · 可设置文件夹与回滚"
+            state.settings.autoBackupLastError != null ->
+                "上次失败：${state.settings.autoBackupLastError}"
+            state.settings.autoBackupLastSuccessAt != null ->
+                "自动备份已开启 · 上次 ${Formatters.dateTime(state.settings.autoBackupLastSuccessAt)}"
+            else -> "自动备份已开启 · 等待首次备份"
+        }
         AppCard(Modifier.fillMaxWidth()) {
+            SettingsRow(
+                name = "备份与恢复",
+                detail = backupDetail,
+                trailing = {
+                    TextAction("管理　›") { vm.openBackupManager() }
+                }
+            )
+            DividerLine()
             SettingsRow(
                 name = "导出完整备份",
                 detail = "JSON 文件 · 包含项目、历史、目标和设置",
@@ -171,7 +193,7 @@ fun SettingsScreen(
             DividerLine()
             SettingsRow(
                 name = "锁屏提醒",
-                detail = "应用在后台或锁屏时不会响铃；返回后显示真实经过时长"
+                detail = "开始训练后由前台服务播报；系统强制停止或重启后不保证准点"
             )
         }
 

@@ -30,7 +30,8 @@ import com.wanghoufan.zaijiuyidian.domain.Formatters
 import com.wanghoufan.zaijiuyidian.ui.components.BottomNav
 import com.wanghoufan.zaijiuyidian.ui.components.ConfirmDialog
 import com.wanghoufan.zaijiuyidian.ui.components.ToastHost
-import com.wanghoufan.zaijiuyidian.ui.screens.HistoryScreen
+import com.wanghoufan.zaijiuyidian.ui.screens.HistoryScreenV11
+import com.wanghoufan.zaijiuyidian.ui.screens.RepsScreen
 import com.wanghoufan.zaijiuyidian.ui.screens.SettingsScreen
 import com.wanghoufan.zaijiuyidian.ui.screens.SheetsHost
 import com.wanghoufan.zaijiuyidian.ui.screens.TrainScreen
@@ -89,6 +90,12 @@ fun AppRoot(state: UiState, vm: AppViewModel) {
         }
     }
 
+    val backupFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) vm.onBackupTreeSelected(uri)
+    }
+
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -118,46 +125,51 @@ fun AppRoot(state: UiState, vm: AppViewModel) {
     }
     LaunchedEffect(state.voiceCue?.id) {
         val cue = state.voiceCue ?: return@LaunchedEffect
-        val pattern = when (cue.kind) {
-            VoiceKind.START -> longArrayOf(60)
-            VoiceKind.INTERVAL -> longArrayOf(50)
-            VoiceKind.TARGET -> longArrayOf(100, 70, 100)
-        }
-        if (state.settings.vibrationEnabled && vibrator != null) {
-            runCatching {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
-                } else {
-                    @Suppress("DEPRECATION")
-                    vibrator.vibrate(pattern, -1)
+        // 后台前台服务存活时，间隔/达标由服务统一播报，避免双重声音与震动。
+        val handledByService = state.serviceActive && cue.kind != VoiceKind.START
+        var voicePlayed = false
+        if (!handledByService) {
+            val pattern = when (cue.kind) {
+                VoiceKind.START -> longArrayOf(60)
+                VoiceKind.INTERVAL -> longArrayOf(50)
+                VoiceKind.TARGET -> longArrayOf(100, 70, 100)
+            }
+            if (state.settings.vibrationEnabled && vibrator != null) {
+                runCatching {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vibrator.vibrate(pattern, -1)
+                    }
                 }
             }
-        }
-        val voicePlayed = if (state.settings.voiceEnabled) {
-            when (cue.kind) {
-                VoiceKind.START -> VoiceCues.playStart()
-                VoiceKind.INTERVAL -> VoiceCues.playInterval(cue.minute)
-                VoiceKind.TARGET -> VoiceCues.playTarget()
+            voicePlayed = if (state.settings.voiceEnabled) {
+                when (cue.kind) {
+                    VoiceKind.START -> VoiceCues.playStart()
+                    VoiceKind.INTERVAL -> VoiceCues.playInterval(cue.minute)
+                    VoiceKind.TARGET -> VoiceCues.playTarget()
+                }
+            } else {
+                false
             }
-        } else {
-            false
-        }
-        if (!voicePlayed && state.settings.soundEnabled) {
-            runCatching {
-                tone?.startTone(
-                    if (cue.kind == VoiceKind.TARGET) ToneGenerator.TONE_PROP_BEEP
-                    else ToneGenerator.TONE_PROP_ACK,
-                    160
-                )
+            if (!voicePlayed && state.settings.soundEnabled) {
+                runCatching {
+                    tone?.startTone(
+                        if (cue.kind == VoiceKind.TARGET) ToneGenerator.TONE_PROP_BEEP
+                        else ToneGenerator.TONE_PROP_ACK,
+                        160
+                    )
+                }
             }
         }
         android.util.Log.i(
             "P068Voice",
-            "cue=${cue.kind} minute=${cue.minute} voicePlayed=$voicePlayed sound=${state.settings.soundEnabled} voice=${state.settings.voiceEnabled}"
+            "cue=${cue.kind} minute=${cue.minute} voicePlayed=$voicePlayed service=$handledByService sound=${state.settings.soundEnabled} voice=${state.settings.voiceEnabled}"
         )
         when (cue.kind) {
             VoiceKind.TARGET -> vm.showToast("已达到目标，可以继续坚持！")
-            VoiceKind.INTERVAL -> if (!voicePlayed) vm.showToast("已训练 ${cue.minute} 分钟")
+            VoiceKind.INTERVAL -> if (!voicePlayed && !handledByService) vm.showToast("已训练 ${cue.minute} 分钟")
             VoiceKind.START -> Unit
         }
     }
@@ -192,8 +204,9 @@ fun AppRoot(state: UiState, vm: AppViewModel) {
                 .padding(padding)
         ) {
             when (state.tab) {
-                Tab.TRAIN -> TrainScreen(state, vm)
-                Tab.HISTORY -> HistoryScreen(state, vm)
+                Tab.TIME -> TrainScreen(state, vm)
+                Tab.REPS -> RepsScreen(state, vm)
+                Tab.HISTORY -> HistoryScreenV11(state, vm)
                 Tab.SETTINGS -> SettingsScreen(
                     state = state,
                     vm = vm,
@@ -229,5 +242,5 @@ fun AppRoot(state: UiState, vm: AppViewModel) {
         }
     }
 
-    SheetsHost(state, vm)
+    SheetsHost(state, vm, onPickBackupFolder = { backupFolderLauncher.launch(null) })
 }

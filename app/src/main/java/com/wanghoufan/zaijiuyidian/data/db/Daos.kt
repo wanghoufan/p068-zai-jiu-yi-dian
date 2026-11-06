@@ -75,6 +75,42 @@ interface SessionDao {
 }
 
 @Dao
+interface RepSetDao {
+    @Query("SELECT * FROM rep_sets")
+    fun observeAll(): Flow<List<RepSetEntity>>
+
+    @Query("SELECT * FROM rep_sets")
+    suspend fun getAll(): List<RepSetEntity>
+
+    @Query("SELECT * FROM rep_sets WHERE sessionId = :sessionId ORDER BY ordinal ASC")
+    suspend fun forSession(sessionId: String): List<RepSetEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(sets: List<RepSetEntity>)
+
+    @Query("DELETE FROM rep_sets WHERE sessionId = :sessionId")
+    suspend fun deleteForSession(sessionId: String)
+
+    @Query("DELETE FROM rep_sets")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface RepDraftDao {
+    @Query("SELECT * FROM rep_draft WHERE id = 1")
+    fun observe(): Flow<RepDraftEntity?>
+
+    @Query("SELECT * FROM rep_draft WHERE id = 1")
+    suspend fun get(): RepDraftEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(draft: RepDraftEntity)
+
+    @Query("DELETE FROM rep_draft")
+    suspend fun delete()
+}
+
+@Dao
 interface ActiveSessionDao {
     @Query("SELECT * FROM active_session WHERE id = 1")
     suspend fun get(): ActiveSessionEntity?

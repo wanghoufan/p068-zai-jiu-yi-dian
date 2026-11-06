@@ -35,13 +35,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.wanghoufan.zaijiuyidian.data.backup.BackupEntry
+import com.wanghoufan.zaijiuyidian.data.backup.BackupSource
 import com.wanghoufan.zaijiuyidian.domain.Formatters
 import com.wanghoufan.zaijiuyidian.domain.Project
+import com.wanghoufan.zaijiuyidian.domain.TrainingMode
 import com.wanghoufan.zaijiuyidian.ui.AppViewModel
 import com.wanghoufan.zaijiuyidian.ui.EntryDraft
+import com.wanghoufan.zaijiuyidian.ui.RepEntryDraft
 import com.wanghoufan.zaijiuyidian.ui.Sheet
 import com.wanghoufan.zaijiuyidian.ui.UiState
 import com.wanghoufan.zaijiuyidian.ui.components.AppCard
+import com.wanghoufan.zaijiuyidian.ui.components.AppSwitch
 import com.wanghoufan.zaijiuyidian.ui.components.AppTextField
 import com.wanghoufan.zaijiuyidian.ui.components.ConfirmDialog
 import com.wanghoufan.zaijiuyidian.ui.components.DangerButton
@@ -49,6 +54,7 @@ import com.wanghoufan.zaijiuyidian.ui.components.DividerLine
 import com.wanghoufan.zaijiuyidian.ui.components.DropdownField
 import com.wanghoufan.zaijiuyidian.ui.components.PrimaryButton
 import com.wanghoufan.zaijiuyidian.ui.components.SecondaryButton
+import com.wanghoufan.zaijiuyidian.ui.components.SectionHeader
 import com.wanghoufan.zaijiuyidian.ui.components.TextAction
 import com.wanghoufan.zaijiuyidian.ui.theme.AppTheme
 import java.time.Instant
@@ -58,7 +64,11 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SheetsHost(state: UiState, vm: AppViewModel) {
+fun SheetsHost(
+    state: UiState,
+    vm: AppViewModel,
+    onPickBackupFolder: () -> Unit = {}
+) {
     val p = AppTheme.palette
     val sheet = state.sheet
 
@@ -108,6 +118,17 @@ fun SheetsHost(state: UiState, vm: AppViewModel) {
             )
             return
         }
+        is Sheet.DiscardRepDraft -> {
+            ConfirmDialog(
+                title = "放弃这次草稿？",
+                message = "已记录的组数会被放弃，正式历史不受影响。想稍后继续就保留草稿。",
+                confirmText = "确认放弃",
+                danger = true,
+                onConfirm = { vm.discardRepDraft() },
+                onDismiss = { vm.dismissSheet() }
+            )
+            return
+        }
         null -> return
         else -> Unit
     }
@@ -143,13 +164,19 @@ fun SheetsHost(state: UiState, vm: AppViewModel) {
         ) {
             when (sheet) {
                 Sheet.ProjectPicker -> ProjectPickerSheet(state, vm)
-                is Sheet.ProjectEdit -> ProjectEditSheet(state, vm, sheet.isNew)
+                is Sheet.ProjectEdit -> ProjectEditSheet(state, vm, sheet.isNew, sheet.mode)
                 Sheet.GoalEditor -> GoalEditorSheet(state, vm)
                 Sheet.PresetEditor -> PresetEditorSheet(state, vm)
+                Sheet.RepsDefaultsEditor -> RepsDefaultsSheet(state, vm)
+                Sheet.RepsPlanEditor -> RepsPlanSheet(state, vm)
+                is Sheet.RepSetEditor -> RepSetEditSheet(state, vm, sheet.index)
+                Sheet.FinishReps -> FinishRepsSheet(state, vm)
                 Sheet.FontScalePicker -> FontScaleSheet(state, vm)
                 is Sheet.FinishConfirm -> FinishSheet(state, vm, sheet)
                 is Sheet.EntryEditor -> EntryEditorSheet(state, vm, sheet.sessionId)
                 Sheet.ImportPreview -> ImportPreviewSheet(state, vm)
+                Sheet.BackupManager -> BackupManagerSheet(state, vm, onPickBackupFolder)
+                is Sheet.BackupRestorePreview -> BackupRestorePreviewSheet(state, vm, sheet.entry)
                 Sheet.SortInfo -> SortInfoSheet(vm)
                 else -> Unit
             }
@@ -201,9 +228,17 @@ private fun SheetActions(
 private fun ProjectPickerSheet(state: UiState, vm: AppViewModel) {
     val p = AppTheme.palette
     val current = state.selectedProject
-    val activeProjects = state.projects.filter { !it.isArchived }
-    val archived = state.projects.filter { it.isArchived }
-    SheetTitle("选择训练项目", "每个项目独立保存目标、预设时长和统计记录。")
+    val mode = state.tab.trainMode
+    val activeProjects = state.projects.filter {
+        !it.isArchived && (mode == null || it.mode == mode)
+    }
+    val archived = state.projects.filter {
+        it.isArchived && (mode == null || it.mode == mode)
+    }
+    SheetTitle(
+        if (mode == TrainingMode.REPS) "选择计次项目" else if (mode == TrainingMode.TIME) "选择计时项目" else "管理训练项目",
+        "每个项目记住自己的记录方式；训练项目之间历史互不混用。"
+    )
     Spacer(Modifier.height(8.dp))
     activeProjects.forEach { project ->
         ProjectChoice(project, project.id == current?.id) { vm.selectProject(project.id) }
@@ -228,7 +263,7 @@ private fun ProjectPickerSheet(state: UiState, vm: AppViewModel) {
             ) {
                 Column {
                     Text(project.name, color = p.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Text("已归档 · 目标 ${Formatters.minutes(project.defaultTargetSec)} 分钟", color = p.sub, fontSize = 11.sp)
+                    Text("已归档 · ${project.modeLabel}", color = p.sub, fontSize = 11.sp)
                 }
                 TextAction("恢复") { vm.restoreProject(project.id) }
             }
@@ -237,8 +272,16 @@ private fun ProjectPickerSheet(state: UiState, vm: AppViewModel) {
     }
     Spacer(Modifier.height(14.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        SecondaryButton("修改当前名称", { vm.openSheet(Sheet.ProjectEdit(false)) }, Modifier.weight(1f))
-        PrimaryButton("＋ 新建项目", { vm.openSheet(Sheet.ProjectEdit(true)) }, Modifier.weight(1f))
+        SecondaryButton(
+            "编辑当前项目",
+            { vm.openSheet(Sheet.ProjectEdit(false, current?.mode)) },
+            Modifier.weight(1f)
+        )
+        PrimaryButton(
+            "＋ 新建${if (mode == TrainingMode.REPS) "计次" else "计时"}项目",
+            { vm.openSheet(Sheet.ProjectEdit(true, mode)) },
+            Modifier.weight(1f)
+        )
     }
     if (current != null) {
         Row(
@@ -270,28 +313,125 @@ private fun ProjectChoice(project: Project, selected: Boolean, onClick: () -> Un
     ) {
         Column {
             Text(project.name, color = p.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Text("目标 ${Formatters.minutes(project.defaultTargetSec)} 分钟", color = p.sub, fontSize = 11.sp)
+            Text(
+                if (project.isReps) {
+                    "计次 · ${project.plannedSets} 组 × ${project.targetRepsPerSet} 次"
+                } else {
+                    "计时 · 目标 ${Formatters.minutes(project.defaultTargetSec)} 分钟"
+                },
+                color = p.sub,
+                fontSize = 11.sp
+            )
         }
         Text(if (selected) "✓" else "›", color = if (selected) p.accent else p.sub, fontSize = 15.sp)
     }
 }
 
 @Composable
-private fun ProjectEditSheet(state: UiState, vm: AppViewModel, isNew: Boolean) {
+private fun ProjectEditSheet(
+    state: UiState,
+    vm: AppViewModel,
+    isNew: Boolean,
+    initialMode: TrainingMode?
+) {
     val p = AppTheme.palette
-    var name by remember(isNew) {
-        mutableStateOf(if (isNew) "" else state.selectedProject?.name.orEmpty())
+    val current = state.selectedProject
+    var name by remember(isNew, current?.id) {
+        mutableStateOf(if (isNew) "" else current?.name.orEmpty())
     }
-    SheetTitle(if (isNew) "新建项目" else "修改项目名称", "建议使用自己能快速辨认的名称。")
+    var mode by remember(isNew, initialMode, current?.id) {
+        mutableStateOf(initialMode ?: current?.mode ?: TrainingMode.TIME)
+    }
+    var minutes by remember(isNew, current?.id) {
+        mutableStateOf(current?.let { Formatters.minutes(it.defaultTargetSec) } ?: "15")
+    }
+    var sets by remember(isNew, current?.id) {
+        mutableStateOf((current?.plannedSets ?: 3).toString())
+    }
+    var reps by remember(isNew, current?.id) {
+        mutableStateOf((current?.targetRepsPerSet ?: 10).toString())
+    }
+
+    SheetTitle(
+        if (isNew) "新建训练项目" else "编辑项目",
+        if (isNew) "按时间或次数记录，创建后记录方式不再改变。" else "已有项目不能改记录方式；可修改名称与默认计划。"
+    )
     Spacer(Modifier.height(8.dp))
-    AppTextField(name, { if (it.length <= 24) name = it }, placeholder = "例如：靠墙静蹲")
-    Text("最多 24 个字", color = p.sub, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+    Text("项目名称", color = p.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    Spacer(Modifier.height(6.dp))
+    AppTextField(name, { if (it.length <= 24) name = it }, placeholder = "例如：引体向上")
+
+    Text("记录方式", color = p.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 14.dp))
+    Spacer(Modifier.height(6.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ModeChoice("按时间", mode == TrainingMode.TIME, enabled = isNew, modifier = Modifier.weight(1f)) { mode = TrainingMode.TIME }
+        ModeChoice("按次数", mode == TrainingMode.REPS, enabled = isNew, modifier = Modifier.weight(1f)) { mode = TrainingMode.REPS }
+    }
+
+    if (mode == TrainingMode.TIME) {
+        Text("默认目标分钟（1～300）", color = p.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 14.dp))
+        Spacer(Modifier.height(6.dp))
+        AppTextField(minutes, { minutes = it }, keyboardType = KeyboardType.Decimal, placeholder = "15")
+    } else {
+        Row(
+            modifier = Modifier.padding(top = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("默认组数（1～40）", color = p.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                AppTextField(sets, { sets = it }, keyboardType = KeyboardType.Number, placeholder = "3")
+            }
+            Column(Modifier.weight(1f)) {
+                Text("每组目标（1～999）", color = p.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                AppTextField(reps, { reps = it }, keyboardType = KeyboardType.Number, placeholder = "10")
+            }
+        }
+    }
+
     SheetActions(
         cancelText = "取消",
         cancel = { vm.openSheet(Sheet.ProjectPicker) },
-        confirmText = "保存",
-        confirm = { if (isNew) vm.createProject(name) else vm.renameProject(name) }
+        confirmText = if (isNew) "创建项目" else "保存",
+        confirm = {
+            val min = minutes.replace(',', '.').toDoubleOrNull() ?: 0.0
+            val setCount = sets.toIntOrNull() ?: 0
+            val repCount = reps.toIntOrNull() ?: 0
+            if (isNew) {
+                vm.createProject(name, mode, min, setCount, repCount)
+            } else {
+                vm.updateProjectSettings(name, min, setCount, repCount)
+            }
+        }
     )
+}
+
+@Composable
+private fun ModeChoice(
+    label: String,
+    selected: Boolean,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val p = AppTheme.palette
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(11.dp))
+            .background(if (selected) p.accent2 else p.field)
+            .border(1.dp, if (selected) p.accent else p.hair, RoundedCornerShape(11.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(vertical = 11.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            label,
+            color = if (selected) p.accentDark else p.sub,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
 }
 
 @Composable
@@ -341,6 +481,141 @@ private fun PresetEditorSheet(state: UiState, vm: AppViewModel) {
 }
 
 @Composable
+private fun RepsDefaultsSheet(state: UiState, vm: AppViewModel) {
+    val project = state.selectedProject
+    var sets by remember(project?.id) { mutableStateOf((project?.plannedSets ?: 3).toString()) }
+    var reps by remember(project?.id) { mutableStateOf((project?.targetRepsPerSet ?: 10).toString()) }
+    SheetTitle("计次默认计划", "以后开始新训练时使用这个组数和每组目标。")
+    Spacer(Modifier.height(10.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text("默认组数（1～40）", color = AppTheme.palette.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(6.dp))
+            AppTextField(sets, { sets = it }, keyboardType = KeyboardType.Number, placeholder = "3")
+        }
+        Column(Modifier.weight(1f)) {
+            Text("每组目标（1～999）", color = AppTheme.palette.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(6.dp))
+            AppTextField(reps, { reps = it }, keyboardType = KeyboardType.Number, placeholder = "10")
+        }
+    }
+    SheetActions(
+        cancelText = "取消",
+        cancel = { vm.dismissSheet() },
+        confirmText = "保存默认计划",
+        confirm = { vm.setRepsDefaults(sets.toIntOrNull() ?: 0, reps.toIntOrNull() ?: 0) }
+    )
+}
+
+@Composable
+private fun RepsPlanSheet(state: UiState, vm: AppViewModel) {
+    val draft = state.repDraft
+    var sets by remember(draft?.touchedAt) { mutableStateOf((draft?.plannedSets ?: 3).toString()) }
+    var reps by remember(draft?.touchedAt) { mutableStateOf((draft?.targetRepsPerSet ?: 10).toString()) }
+    SheetTitle("调整这次计划", "只影响本次训练，不会修改旧成绩。")
+    Spacer(Modifier.height(10.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text("计划组数（1～40）", color = AppTheme.palette.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(6.dp))
+            AppTextField(sets, { sets = it }, keyboardType = KeyboardType.Number, placeholder = "3")
+        }
+        Column(Modifier.weight(1f)) {
+            Text("每组目标（1～999）", color = AppTheme.palette.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(6.dp))
+            AppTextField(reps, { reps = it }, keyboardType = KeyboardType.Number, placeholder = "10")
+        }
+    }
+    Text(
+        "已经完成的组数和实际次数不会因修改计划而变化。",
+        color = AppTheme.palette.sub,
+        fontSize = 11.sp,
+        lineHeight = 17.sp,
+        modifier = Modifier.padding(top = 10.dp)
+    )
+    SheetActions(
+        cancelText = "取消",
+        cancel = { vm.dismissSheet() },
+        confirmText = "保存本次计划",
+        confirm = { vm.updateDraftPlan(sets.toIntOrNull() ?: 0, reps.toIntOrNull() ?: 0) }
+    )
+}
+
+@Composable
+private fun RepSetEditSheet(state: UiState, vm: AppViewModel, index: Int) {
+    val current = state.repDraft?.sets?.getOrNull(index) ?: 0
+    var value by remember(index, current) { mutableStateOf(current.toString()) }
+    SheetTitle("修改第 ${index + 1} 组", "只修改这组的实际完成次数。")
+    Spacer(Modifier.height(10.dp))
+    Text("实际次数（1～999）", color = AppTheme.palette.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    Spacer(Modifier.height(6.dp))
+    AppTextField(value, { value = it }, keyboardType = KeyboardType.Number, placeholder = current.toString())
+    Row(
+        modifier = Modifier.padding(top = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        SecondaryButton("删除本组", { vm.removeRepSet(index) }, Modifier.weight(1f))
+        PrimaryButton(
+            "确认修改",
+            { vm.editRepSet(index, value.toIntOrNull() ?: 0) },
+            Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun FinishRepsSheet(state: UiState, vm: AppViewModel) {
+    val p = AppTheme.palette
+    val draft = state.repDraft ?: return
+    var note by remember(draft.touchedAt) { mutableStateOf("") }
+    val total = draft.sets.sum()
+    val best = draft.sets.maxOrNull() ?: 0
+    SheetTitle("结束并保存", "保存真实完成的组数，不必做满原计划。")
+    Spacer(Modifier.height(10.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+        MiniMetric("完成组数", draft.sets.size.toString(), "组", Modifier.weight(1f))
+        MiniMetric("总次数", total.toString(), "次", Modifier.weight(1f))
+        MiniMetric("最佳单组", best.toString(), "次", Modifier.weight(1f))
+    }
+    Text(
+        "计划 ${draft.plannedSets} 组 × ${draft.targetRepsPerSet} 次 · 实际 ${draft.sets.joinToString(" + ")} = $total 次",
+        color = p.sub,
+        fontSize = 11.sp,
+        lineHeight = 17.sp,
+        modifier = Modifier.padding(top = 12.dp)
+    )
+    Text("备注（选填）", color = p.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 14.dp))
+    Spacer(Modifier.height(6.dp))
+    AppTextField(note, { if (it.length <= 300) note = it }, placeholder = "今天的感觉、动作状态等", singleLine = false, minHeight = 70)
+    SheetActions(
+        cancelText = "继续训练",
+        cancel = { vm.dismissSheet() },
+        confirmText = "完成保存",
+        confirm = { vm.finishReps(note) }
+    )
+}
+
+@Composable
+private fun MiniMetric(label: String, value: String, suffix: String, modifier: Modifier = Modifier) {
+    val p = AppTheme.palette
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(p.field)
+            .padding(horizontal = 10.dp, vertical = 11.dp)
+    ) {
+        Text(label, color = p.sub, fontSize = 10.sp)
+        Text(
+            "$value $suffix",
+            color = p.ink,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+
+@Composable
 private fun FinishSheet(state: UiState, vm: AppViewModel, sheet: Sheet.FinishConfirm) {
     val p = AppTheme.palette
     var note by remember(sheet) { mutableStateOf("") }
@@ -386,17 +661,35 @@ private fun EntryEditorSheet(state: UiState, vm: AppViewModel, sessionId: String
     var actualText by remember(draft) { mutableStateOf(minutesInput(draft.actualSec)) }
     var note by remember(draft) { mutableStateOf(draft.note) }
 
+    val existing = sessionId?.let { id -> state.sessions.firstOrNull { it.id == id } }
+    val project = state.projects.firstOrNull { it.id == projectId } ?: state.selectedProject
+    val isReps = project?.isReps == true
+    val repBaseline = remember(sessionId, projectId) {
+        if (existing?.isReps == true && existing.projectId == projectId) {
+            Triple(existing.plannedSets, existing.targetRepsPerSet, existing.sets)
+        } else {
+            val pr = project
+            Triple(pr?.plannedSets ?: 3, pr?.targetRepsPerSet ?: 10, emptyList())
+        }
+    }
+    var setTexts by remember(sessionId, projectId) {
+        mutableStateOf(
+            if (repBaseline.third.isNotEmpty()) repBaseline.third.map { it.toString() }
+            else List(repBaseline.first) { repBaseline.second.toString() }
+        )
+    }
+
     fun localDateTime(): LocalDateTime =
         Instant.ofEpochMilli(endedAt).atZone(zone).toLocalDateTime()
 
-    SheetTitle(if (sessionId == null) "补录训练记录" else "编辑训练记录", "可以补充漏记的训练，保存后图表自动重新计算。")
+    SheetTitle(if (sessionId == null) "补录训练记录" else "编辑训练记录", "保存后所有图表和统计会立即重新计算。")
 
     Text("所属项目", color = p.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
     Spacer(Modifier.height(6.dp))
     DropdownField(
         label = "项目",
-        value = state.projects.firstOrNull { it.id == projectId }?.name ?: "请选择",
-        options = state.projects.map { it.id to it.name },
+        value = project?.let { "${it.name} · ${it.modeLabel}" } ?: "请选择",
+        options = state.projects.map { it.id to "${it.name} · ${it.modeLabel}" },
         onSelect = { projectId = it }
     )
 
@@ -427,16 +720,64 @@ private fun EntryEditorSheet(state: UiState, vm: AppViewModel, sessionId: String
         )
     }
 
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 14.dp)) {
-        Column(Modifier.weight(1f)) {
-            Text("目标分钟", color = p.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            AppTextField(targetText, { targetText = it }, keyboardType = KeyboardType.Decimal, placeholder = "25")
+    if (isReps) {
+        Text(
+            "计划 ${repBaseline.first} 组 × ${repBaseline.second} 次 · 逐组填写实际次数",
+            color = p.ink,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = 14.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+        setTexts.forEachIndexed { index, text ->
+            Row(
+                modifier = Modifier.padding(bottom = 7.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "${index + 1} 组",
+                    color = p.sub,
+                    fontSize = 11.sp,
+                    modifier = Modifier.width(34.dp)
+                )
+                AppTextField(
+                    value = text,
+                    onValueChange = { newValue ->
+                        if (newValue.length <= 3 && newValue.all(Char::isDigit)) {
+                            setTexts = setTexts.toMutableList().also { it[index] = newValue }
+                        }
+                    },
+                    keyboardType = KeyboardType.Number,
+                    placeholder = repBaseline.second.toString(),
+                    modifier = Modifier.weight(1f)
+                )
+                TextAction("删除", color = p.red) {
+                    if (setTexts.size > 1) {
+                        setTexts = setTexts.toMutableList().also { it.removeAt(index) }
+                    } else {
+                        vm.showToast("至少保留 1 组")
+                    }
+                }
+            }
         }
-        Column(Modifier.weight(1f)) {
-            Text("实际分钟", color = p.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            AppTextField(actualText, { actualText = it }, keyboardType = KeyboardType.Decimal, placeholder = "10")
+        if (setTexts.size < 40) {
+            TextAction("＋ 添加一组") {
+                setTexts = setTexts + repBaseline.second.toString()
+            }
+        }
+    } else {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 14.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text("目标分钟", color = p.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                AppTextField(targetText, { targetText = it }, keyboardType = KeyboardType.Decimal, placeholder = "25")
+            }
+            Column(Modifier.weight(1f)) {
+                Text("实际分钟", color = p.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                AppTextField(actualText, { actualText = it }, keyboardType = KeyboardType.Decimal, placeholder = "10")
+            }
         }
     }
 
@@ -449,21 +790,35 @@ private fun EntryEditorSheet(state: UiState, vm: AppViewModel, sessionId: String
         cancel = { vm.dismissSheet() },
         confirmText = "保存记录",
         confirm = {
-            val targetSec = targetText.replace(',', '.').toDoubleOrNull()?.let { Math.round(it * 60).toInt() }
-            val actualSec = actualText.replace(',', '.').toDoubleOrNull()?.let { Math.round(it * 60).toInt() }
-            if (targetSec == null || actualSec == null) {
-                vm.showToast("请填写正确的时长")
-            } else {
-                vm.saveEntry(
-                    EntryDraft(
+            if (isReps) {
+                vm.saveRepEntry(
+                    RepEntryDraft(
                         id = sessionId,
                         projectId = projectId,
                         endedAtMs = endedAt,
-                        targetSec = targetSec,
-                        actualSec = actualSec,
+                        plannedSets = repBaseline.first,
+                        targetRepsPerSet = repBaseline.second,
+                        sets = setTexts.mapNotNull { it.toIntOrNull() },
                         note = note
                     )
                 )
+            } else {
+                val targetSec = targetText.replace(',', '.').toDoubleOrNull()?.let { Math.round(it * 60).toInt() }
+                val actualSec = actualText.replace(',', '.').toDoubleOrNull()?.let { Math.round(it * 60).toInt() }
+                if (targetSec == null || actualSec == null) {
+                    vm.showToast("请填写正确的时长")
+                } else {
+                    vm.saveEntry(
+                        EntryDraft(
+                            id = sessionId,
+                            projectId = projectId,
+                            endedAtMs = endedAt,
+                            targetSec = targetSec,
+                            actualSec = actualSec,
+                            note = note
+                        )
+                    )
+                }
             }
         }
     )
@@ -491,6 +846,12 @@ private fun ImportPreviewSheet(state: UiState, vm: AppViewModel) {
         ) {
             PreviewLine("备份包含项目", "${preview.projectCount} 个（新增 ${preview.newProjects}，冲突 ${preview.conflictProjects}）")
             PreviewLine("备份包含记录", "${preview.sessionCount} 条（新增 ${preview.newSessions}，冲突 ${preview.conflictSessions}）")
+            if (preview.repsSessions > 0) {
+                PreviewLine("其中计次记录", "${preview.repsSessions} 条（含每组明细）")
+            }
+            if (preview.hasDraft) {
+                PreviewLine("未完成草稿", "1 份（仅覆盖恢复会替换）")
+            }
             if (preview.deletedSessions > 0) {
                 PreviewLine("已删除标记", "${preview.deletedSessions} 条（不会复活）")
             }
@@ -608,4 +969,188 @@ private fun SortInfoSheet(vm: AppViewModel) {
     SheetTitle("历史记录顺序", "按完成时间从新到旧排列；完成时间相同时按记录 ID 稳定排序。修改时间后，列表与趋势图会一同更新。")
     Spacer(Modifier.height(14.dp))
     SecondaryButton("知道了", { vm.dismissSheet() }, Modifier.fillMaxWidth())
+}
+
+@Composable
+private fun BackupManagerSheet(
+    state: UiState,
+    vm: AppViewModel,
+    onPickBackupFolder: () -> Unit
+) {
+    val p = AppTheme.palette
+    val settings = state.settings
+    val hasFolder = !settings.autoBackupTreeUri.isNullOrBlank()
+    val enabled = settings.autoBackupEnabled && hasFolder
+    val autoEntries = state.backupEntries.filter { it.source == BackupSource.AUTO }
+    val safetyEntries = state.backupEntries.filter { it.source == BackupSource.SAFETY }
+
+    SheetTitle("备份与恢复", "自动备份写入你选择的文件夹；卸载后文件仍在。")
+
+    AppCard(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Column(Modifier.padding(13.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("自动本地备份", color = p.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        if (enabled) "已开启 · 最近 7 个成功版本" else "未开启",
+                        color = if (enabled) p.accent else p.sub,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(top = 3.dp)
+                    )
+                }
+                AppSwitch(enabled) {
+                    if (!hasFolder) onPickBackupFolder() else vm.setAutoBackupEnabled(it)
+                }
+            }
+            Text(
+                when {
+                    settings.autoBackupLastError != null -> "上次失败：${settings.autoBackupLastError}"
+                    settings.autoBackupLastSuccessAt != null ->
+                        "上次成功：${Formatters.dateTime(settings.autoBackupLastSuccessAt)}"
+                    hasFolder -> "等待首次自动备份"
+                    else -> "尚未选择备份文件夹"
+                },
+                color = if (settings.autoBackupLastError != null) p.red else p.sub,
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SecondaryButton(
+                    if (hasFolder) "更换文件夹" else "选择文件夹",
+                    onPickBackupFolder,
+                    Modifier.weight(1f)
+                )
+                SecondaryButton("立即备份", { vm.backupNow() }, Modifier.weight(1f))
+            }
+        }
+    }
+
+    Text(
+        "建议选择 Documents 下的独立文件夹；Android 11+ 不允许选择 Download 或存储根目录。共享文件夹等同于把备份放在别人也可能看到的位置。",
+        color = p.sub,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+        modifier = Modifier.padding(top = 9.dp)
+    )
+
+    SectionHeader("自动备份（最多 7 个）", "刷新", { vm.loadBackupEntries() })
+    if (state.backupEntriesLoading) {
+        Text("正在读取备份列表…", color = p.sub, fontSize = 12.sp)
+    } else if (autoEntries.isEmpty()) {
+        Text(
+            if (hasFolder) "还没有自动备份；授权后发生一次数据变动就会生成。" else "选择文件夹并开启后，会在这里显示。",
+            color = p.sub,
+            fontSize = 12.sp
+        )
+    } else {
+        autoEntries.forEach { entry ->
+            BackupEntryRow(entry, vm)
+        }
+    }
+
+    if (safetyEntries.isNotEmpty()) {
+        SectionHeader("恢复前保护点")
+        safetyEntries.forEach { entry ->
+            BackupEntryRow(entry, vm)
+        }
+    }
+
+    Text(
+        "手动备份文件不在这个列表里时，用设置中的数据管理 → 导入与恢复选择文件；所有恢复都会先写保护点。",
+        color = p.sub,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+        modifier = Modifier.padding(top = 12.dp)
+    )
+    TextAction("关闭") { vm.dismissSheet() }
+}
+
+@Composable
+private fun BackupEntryRow(entry: BackupEntry, vm: AppViewModel) {
+    val p = AppTheme.palette
+    AppCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        Column(Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    Formatters.dateTime(entry.timeMs),
+                    color = p.ink,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    if (entry.source == BackupSource.SAFETY) "恢复前保护点" else "自动备份",
+                    color = if (entry.source == BackupSource.SAFETY) p.amber else p.accent,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Text(
+                if (entry.valid) {
+                    "v${entry.version} · ${entry.projectCount} 个项目 · ${entry.sessionCount} 条记录" +
+                        if (entry.deletedCount > 0) "（含删除 ${entry.deletedCount}）" else ""
+                } else {
+                    "损坏或无法读取：${entry.error ?: "未知错误"}"
+                },
+                color = if (entry.valid) p.sub else p.red,
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
+                modifier = Modifier.padding(top = 5.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    if (entry.sizeBytes < 1024) "${entry.sizeBytes} B" else "${entry.sizeBytes / 1024} KB",
+                    color = p.sub,
+                    fontSize = 10.sp
+                )
+                if (entry.valid) {
+                    TextAction("预览") { vm.requestRestoreBackup(entry) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackupRestorePreviewSheet(state: UiState, vm: AppViewModel, entry: BackupEntry) {
+    val p = AppTheme.palette
+    SheetTitle("恢复备份预览", "已校验文件格式与摘要；确认前不会改动当前数据。")
+    AppCard(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Column(Modifier.padding(13.dp)) {
+            PreviewLine("备份时间", Formatters.dateTime(entry.timeMs))
+            PreviewLine("来源", if (entry.source == BackupSource.SAFETY) "恢复前保护点" else "自动备份")
+            PreviewLine("数据版本", "v${entry.version}")
+            PreviewLine("项目", "${entry.projectCount} 个")
+            PreviewLine("记录", "${entry.sessionCount} 条" + if (entry.deletedCount > 0) "（含删除 ${entry.deletedCount}）" else "")
+            PreviewLine("校验状态", if (entry.valid) "通过" else "失败")
+        }
+    }
+    Text(
+        "恢复会替换当前项目、历史与设置。开始前会先在备份文件夹写入并校验一个新的保护点；若保护点失败，恢复会取消。",
+        color = p.red,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+        modifier = Modifier.padding(top = 10.dp)
+    )
+    SheetActions(
+        cancelText = "取消",
+        cancel = { vm.openSheet(Sheet.BackupManager) },
+        confirmText = "确认恢复",
+        confirm = { vm.confirmRestoreBackup(entry) }
+    )
 }

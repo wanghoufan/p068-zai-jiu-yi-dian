@@ -1,0 +1,31 @@
+推送记录｜2026-11-06 22:52 CST
+
+APK: dist/P068-zai-jiu-yi-dian-v1.1.0-debug.apk
+大小: 16,033,544 字节
+SHA-256: 3d81a707df8473a1e54365c7a815cc4ff359602c0a1812bc5e78a481d1055919
+安装方式: adb install -r（保留数据）
+
+Redmi Note 11 5G（Android 11）
+- install: Success
+- versionName 1.1.0 / versionCode 3
+- 回读 base.apk SHA-256: 3d81a707...d1055919（与 dist 一致）
+- 启动: MainActivity 前台，pid 15559
+- 数据: databases 保留；迁移前数据 1 项目/0 会话，迁移后仍 1 项目/0 会话（另有本轮合成 PullUp 数据）
+
+Redmi Note 12 Pro（Android 14）
+- install: Success
+- versionName 1.1.0 / versionCode 3
+- 回读 base.apk SHA-256: 3d81a707...d1055919（与 dist 一致）
+- 启动: MainActivity 前台，pid 13789
+- 数据: databases 保留；旧项目“练习 A”保留
+
+Redmi Note 12T Pro（Android 15）
+- install: Success
+- versionName 1.1.0 / versionCode 3
+- 回读 base.apk SHA-256: 3d81a707...d1055919（与 dist 一致）
+- 启动: MainActivity 前台，pid 31980
+- 数据: databases 保留；迁移后 projects=1、sessions=0、mode=TIME、plannedSets=3；rep_sets/rep_draft 已建
+
+备注
+- 三台均为 DEBUG 测试签名。
+- 未 commit/push；未发布。

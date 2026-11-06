@@ -1,0 +1,3 @@
+Redmi Note 12 Pro（Android 14 / SDK 34）：完整功能、长时训练、锁屏/后台语音、SAF 自动备份、列表/预览/恢复/回滚、通知拒绝降级
+Redmi Note 11 5G（Android 11 / SDK 30）：安装启动、锁屏 3 分钟语音、SAF 自动备份与列表；恢复未完成
+Redmi Note 12T Pro（Android 15 / SDK 35）：安装 1.0.1、回读哈希一致、启动、锁屏 3 分钟语音通过；SAF 授权/自动备份/恢复未完成（NOT_RUN）

@@ -72,13 +72,28 @@ fun TrainScreen(state: UiState, vm: AppViewModel, modifier: Modifier = Modifier)
             .verticalScroll(rememberScrollState())
             .padding(start = 19.dp, end = 19.dp, top = 6.dp, bottom = 26.dp)
     ) {
-        TopTitle("训练", eyebrow = "专注每一次进步")
+        TopTitle("时长", eyebrow = "目标倒计时 · 完整计时训练")
 
         ProjectSelector(
             project = project,
             enabled = !running,
             onClick = { if (!running) vm.openSheet(Sheet.ProjectPicker) }
         )
+
+        if (state.repDraft != null) {
+            Spacer(Modifier.height(10.dp))
+            AppCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(13.dp)) {
+                    Text(
+                        "次数训练还有未完成草稿，开始计时前请先保存或放弃。",
+                        color = p.sub,
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp
+                    )
+                    TextAction("去继续次数草稿") { vm.resumeRepDraft() }
+                }
+            }
+        }
 
         Spacer(Modifier.height(14.dp))
 
@@ -183,7 +198,7 @@ private fun ProjectSelector(project: Project?, enabled: Boolean, onClick: () -> 
                 fontWeight = FontWeight.Bold
             )
             Text(
-                if (enabled) "当前计时项目" else "训练进行中，项目已锁定",
+                if (enabled) "计时训练 · 当前项目" else "训练进行中，项目已锁定",
                 color = p.sub,
                 fontSize = 11.sp,
                 modifier = Modifier.padding(top = 3.dp)

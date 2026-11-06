@@ -1,0 +1,10 @@
+# V1.0.1-R2 构建信息
+versionCode: 2
+versionName: 1.0.1
+APK: dist/P068-zai-jiu-yi-dian-v1.0.1-debug.apk
+size: 15,701,351 bytes
+SHA-256: 8b546d712113defb64660dd63ae03d49bd17a8e75d2b0d3c72342b6c2eb4e908
+signer: Android Debug
+cert SHA-256: 8e82a7975008e8ec87ff0f2ecadf495b5263effa34aaec9ab6f135ebea911cf3
+tests: 25/25 pass (app/build/test-results/testDebugUnitTest)
+installed: Redmi Note 12 Pro (indq...) 与 Redmi Note 11 5G 回读 base.apk 哈希均与 dist 一致
