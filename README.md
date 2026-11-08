@@ -1,6 +1,16 @@
-# 再久一点（P068）
+简体中文 | [English](./README.en.md)
+
+# 再久一点
 
 一个**完全离线**的 Android 双模式训练应用：时长倒计时 + 按组计次，共用完整历史与备份。
+
+<p>
+  <img src="docs/screenshots/time-mode.png" width="200" alt="时长页：选择计时项目、设定目标倒计时并开始训练">
+  <img src="docs/screenshots/reps-mode.png" width="200" alt="次数页：按组记录实际次数，可修改当次计划">
+  <img src="docs/screenshots/history.png" width="200" alt="历史页：训练次数统计与每周频率关系图表">
+</p>
+
+*以上为 Redmi Note 11 5G（Android 11）真机运行截图。*
 
 - 不联网、不登录、不上传：Manifest 没有网络权限，训练记录只存在你的手机里。
 - 四个页面：**时长 / 次数 / 历史 / 设置**。

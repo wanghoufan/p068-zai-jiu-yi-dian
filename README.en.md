@@ -1,6 +1,16 @@
-# Zai Jiu Yi Dian (P068)
+[简体中文](./README.md) | English
+
+# Zai Jiu Yi Dian
 
 An **offline-first** Android app with two training modes: a real countdown timer and set-by-set rep logging, sharing full history and local backups.
+
+<p>
+  <img src="docs/screenshots/time-mode.png" width="200" alt="Time tab: pick a timed project, set a target countdown, and start">
+  <img src="docs/screenshots/reps-mode.png" width="200" alt="Reps tab: log actual reps per set and adjust the current plan">
+  <img src="docs/screenshots/history.png" width="200" alt="History tab: session stats and the weekly frequency relationship chart">
+</p>
+
+*These screenshots were captured on a Redmi Note 11 5G (Android 11).*
 
 - No network, no account, no uploads: the app declares no INTERNET permission.
 - Four tabs: **Time / Reps / History / Settings**.
@@ -13,7 +23,7 @@ An **offline-first** Android app with two training modes: a real countdown timer
 - Light theme by default, dark theme available.
 - Voice feedback: a vibration + spoken "开始训练" on start, a spoken checkpoint every 3 minutes, and a spoken cue when the target is reached. Can be disabled under Settings → Training preferences → Voice reminders.
 
-## Install
+## Installation
 
 APK: `dist/P068-zai-jiu-yi-dian-v1.1.0-debug.apk`
 
