@@ -13,9 +13,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SessionEntity::class,
         ActiveSessionEntity::class,
         RepSetEntity::class,
-        RepDraftEntity::class
+        RepDraftEntity::class,
+        SyncOutboxEntity::class,
+        SyncStateEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -24,6 +26,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun activeSessionDao(): ActiveSessionDao
     abstract fun repSetDao(): RepSetDao
     abstract fun repDraftDao(): RepDraftDao
+    abstract fun syncOutboxDao(): SyncOutboxDao
+    abstract fun syncStateDao(): SyncStateDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -72,6 +76,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `projects` ADD COLUMN `revision` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `projects` ADD COLUMN `deletedAt` INTEGER")
+                db.execSQL("ALTER TABLE `sessions` ADD COLUMN `revision` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `rep_sets` ADD COLUMN `updatedAt` INTEGER")
+                db.execSQL("ALTER TABLE `rep_sets` ADD COLUMN `deletedAt` INTEGER")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `sync_outbox` (" +
+                        "`mutationId` TEXT NOT NULL, `entity` TEXT NOT NULL, " +
+                        "`recordId` TEXT NOT NULL, `op` TEXT NOT NULL, `payload` TEXT NOT NULL, " +
+                        "`baseRevision` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, " +
+                        "`attempts` INTEGER NOT NULL, `lastError` TEXT, PRIMARY KEY(`mutationId`))"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `sync_state` (" +
+                        "`key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`key`))"
+                )
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -80,7 +105,7 @@ abstract class AppDatabase : RoomDatabase() {
                 context.applicationContext,
                 AppDatabase::class.java,
                 "zai-jiu-yi-dian.db"
-            ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
         }
     }
 }

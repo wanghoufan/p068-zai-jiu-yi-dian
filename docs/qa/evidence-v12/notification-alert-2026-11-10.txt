@@ -1,0 +1,27 @@
+# V1.2 后台到点提醒实测（2026-11-10）
+
+- 设备：Redmi Note 11 5G（Android 11）；媒体音量 0、闹钟音量 10
+- APK：`dist/P068-zai-jiu-yi-dian-v1.2.0-debug.apk`，versionCode 4 / 1.2.0，17,010,870 字节，SHA-256 `0d22afbd144e06b2b9afa3e23f9ffe44b69286d774a4023053c5494d68fc0811`；两台小米均安装并通过回读哈希
+
+## 实现要点（方案 A+B）
+
+- 通知渠道 `training_alert`「训练到点提醒」：IMPORTANCE_HIGH；声音 `content://settings/system/alarm_alert`；AudioAttributes `USAGE_ALARM`；锁屏可见。渠道震动关闭，震动由代码统一 3 次约 500ms 长震，避免双份。
+- 到点发独立通知 id=6802（category=alarm）；结束/放弃会取消该通知。
+- 提示音从媒体流改为闹钟流：SoundPool `USAGE_ALARM`；ToneGenerator `STREAM_ALARM`。
+- 训练开始/继续按剩余时间挂 `AlarmManager`；Android 12+ 无精确闹钟权限时降级 `setAndAllowWhileIdle`；`TargetAlarmReceiver`（exported=false）收到后发同一通知并震动；暂停/结束/放弃取消闹钟。
+- 常驻通知 6801 只在开始/暂停/继续等状态变化时更新，到点不再刷新；服务与闹钟 2 秒内只发一次 6802。
+- 前台服务 wakeLock 由 30 分钟放宽到 6 小时。
+- 设置 → 训练偏好新增「测试到点提醒」；通知权限被拒或精确闹钟未授权时显示可点跳转行。
+
+## 实测记录
+
+- 开始 1 分钟倒计时后切后台；AlarmManager 记录 `RTC_WAKEUP` 到 16:32:33。
+- 到点日志：`P068Voice: service cue interval=0 target=true voicePlayed=true`。
+- 系统通知 6802 落在 `training_alert`，importance=4；日志 granting `content://settings/system/alarm_alert`。
+- 去重前：每秒刷新常驻通知 + 服务与闹钟双发，MIUI 判为 `Muting recently noisy` 并把提醒静音；去重后不再出现 `Muting recently noisy`。
+- 结束/放弃后通知被取消；设置 → 训练偏好 →「测试到点提醒」自检通知同样成功。
+
+## 边界
+
+- 静音/勿扰属系统限制：渠道 `mBypassDnd=false`；测试中 `settings put global zen_mode 1` 未生效，无法用 adb 强开；需用户把该提醒设为优先或训练时关勿扰。
+- 国产 ROM（MIUI/HyperOS）省电策略仍可能延迟闹钟，不承诺必定准点。

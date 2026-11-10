@@ -50,6 +50,7 @@ class TrainingForegroundService : Service() {
     private var tone: ToneGenerator? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var lastNotificationSec = -1L
+    private var lastNotificationPaused: Boolean? = null
 
     private val bootCount: Int by lazy {
         runCatching {
@@ -63,6 +64,7 @@ class TrainingForegroundService : Service() {
         settingsRepo = SettingsRepository(this)
         TrainingServiceState.active.value = true
         createChannel()
+        TrainingAlerts.ensureChannel(this)
         try {
             ServiceCompat.startForeground(
                 this,
@@ -97,6 +99,7 @@ class TrainingForegroundService : Service() {
         releaseWakeLock()
         runCatching { tone?.release() }
         tone = null
+        TrainingAlerts.cancelNotification(this)
         TrainingServiceState.active.value = false
         super.onDestroy()
     }
@@ -143,6 +146,15 @@ class TrainingForegroundService : Service() {
                         settings.vibrationEnabled,
                         target = true
                     )
+                    val projectName = runCatching {
+                        db.projectDao().findById(active.projectId)?.name
+                    }.getOrNull()
+                    TrainingAlerts.notifyTarget(
+                        this,
+                        projectName,
+                        active.targetSec,
+                        vibrate = false
+                    )
                 }
             }
 
@@ -159,7 +171,7 @@ class TrainingForegroundService : Service() {
         target: Boolean = false
     ) {
         if (vibrationEnabled) {
-            vibrate(if (target) longArrayOf(100, 70, 100) else longArrayOf(50))
+            vibrate(if (target) TARGET_VIBRATION else longArrayOf(50))
         }
         val played = if (voiceEnabled) {
             if (target) VoiceCues.playTarget() else VoiceCues.playInterval(interval)
@@ -168,7 +180,7 @@ class TrainingForegroundService : Service() {
         }
         if (!played && soundEnabled) {
             runCatching {
-                if (tone == null) tone = ToneGenerator(AudioManager.STREAM_MUSIC, 70)
+                if (tone == null) tone = ToneGenerator(AudioManager.STREAM_ALARM, 70)
                 tone?.startTone(
                     if (target) ToneGenerator.TONE_PROP_BEEP else ToneGenerator.TONE_PROP_ACK,
                     160
@@ -200,7 +212,14 @@ class TrainingForegroundService : Service() {
     ) {
         val sec = elapsedMs / 1000
         if (sec == lastNotificationSec) return
+        val targetReached = sec >= active.targetSec
+        // 到点由 6802 独立提醒负责，不再同时刷新 6801，避免系统判为噪声应用而静音提醒
+        if (targetReached) return
+        val stateChanged = lastNotificationPaused != paused
+        // 周期性刷新会被系统判定为「噪声应用」并静音到点提醒，只在状态变化时更新
+        if (!stateChanged) return
         lastNotificationSec = sec
+        lastNotificationPaused = paused
         val title = when {
             paused -> "训练已暂停"
             sec >= active.targetSec -> "目标已达到"
@@ -264,7 +283,7 @@ class TrainingForegroundService : Service() {
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "P068:training").apply {
             setReferenceCounted(false)
-            acquire(30 * 60 * 1000L)
+            acquire(6 * 60 * 60 * 1000L)
         }
     }
 
@@ -276,5 +295,6 @@ class TrainingForegroundService : Service() {
     companion object {
         const val CHANNEL_ID = "training_timer"
         const val NOTIFICATION_ID = 6801
+        private val TARGET_VIBRATION = longArrayOf(0, 500, 300, 500, 300, 500)
     }
 }

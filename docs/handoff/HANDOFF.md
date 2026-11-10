@@ -7,54 +7,47 @@
 | 要什么 | 去哪 |
 |---|---|
 | 开工路由、红线、索引 | `AGENTS.md`（唯一真源） |
-| 架构与构建事实 | `docs/architecture-facts.md` |
-| 未决风险与待验证项 | `docs/risks.md` |
+| 架构与构建事实（含云端对象） | `docs/architecture-facts.md` |
+| 未决风险与待验证项 | `docs/risks.md`（R13 已处置、R14 已修并实测） |
 | 踩坑与审查交付约定 | `agent.md` |
 | 经验条目 | `经验一句话.md` |
-| 治理细则 | `docs/sop/`（governance-scope / execution-modes / dispatch / ledger） |
-| 角色卡 | `docs/roles/` |
+| V1.2 云同步计划 | `docs/plan/P068-V1.2-Cloud-Sync-Plan.md` |
+| V1.2 验收矩阵 | `docs/qa/产品验收追踪矩阵-P068-V1.2.md` |
+| 共享云环境登记簿 | `docs/plan/共享云环境登记簿-P068.md` |
+| 治理细则 / 角色卡 | `docs/sop/`、`docs/roles/` |
 
 ## §1 当前进展
 
-- Captured at：2026-11-06 22:52
-- PROJECT_PHASE：DEVELOP
-- PLAN_VERSION：`docs/plan/P068-Android-Dual-Mode-Training-V1.1-R2-Final-Approved-Plan.md`
-- PLAN_READINESS_SCORE：（不适用；用户批准版开发计划直接作为 DEV_BASELINE）
-- PLAN_GATE：APPROVED
-- DEV_BASELINE：P068-Android-Dual-Mode-Training-V1.1-R2-Final-Approved-Plan
-- CHANGE_REQUEST：NONE（旧三 Tab V1.1 已被最终 R2 四 Tab 取代）
-- Stage ID：Android V1.1-R2 双模式与完整历史
-- 剩 P0：**AC02/AC12/AC13/AC14 为 PARTIAL，AC15 用户签收 OPEN**；V1 AC-20 与 R2 AC-R2-12 仍待签收
-- 当前 Task：V11R2-T09 交付与待签收；T01–T08 已实现/验收
-- 执行链/Session：主开发者模式（用户口令「你是主开发者·连续推进」），未走 ORCA 角色派工链
-- 本轮已完成：
-  - 四 Tab：时长/次数/历史/设置；TIME 原倒计时、暂停/继续/超时/语音/保存保留。
-  - 计次：项目模式、3×10/4×12、逐组实际次数、修改/撤销/超计划追加/提前结束/备注/草稿恢复；草稿不进历史。
-  - Room v1→v2 显式迁移：Project/Session 模式与计次计划、rep_sets、rep_draft；两台旧设备 `install -r` 后旧项目保留。
-  - 完整历史：三图（趋势/周频率/频率关系）+ 关系表；TIME 分钟、REPS 总次数/最佳单组、全部项目只合并次数/天数；筛选/补录/逐组编辑/软删/撤销/恢复。
-  - 备份 V3：模式、计划快照、每组 sets、草稿、lastTime/lastReps；V1/V2 原算法兼容；手动导出/覆盖/重复合并真机通过，安全点已写。
-  - 32/32 自动测试通过（含迁移、V3 Repository、计次统计、V1/V2 兼容）。
-  - 修复 2 项本轮 P0：V3 恢复后 sets 未即时回填、改计划后下一组建议值不更新。
-  - 交付 APK：`dist/P068-zai-jiu-yi-dian-v1.1.0-debug.apk`，16,033,544 字节，SHA-256 `3d81a707df8473a1e54365c7a815cc4ff359602c0a1812bc5e78a481d1055919`，versionCode 3 / 1.1.0。
-  - Note 11 5G 主路径完整；Note 12 Pro 安装/迁移/四 Tab/旧数据保留；Note 12T 已连接并完成安装/哈希/启动/v1→v2 迁移，完整双模式链路未跑（另一应用抢占前台）。
-  - 三台均已推送 1.1.0 并回读 base.apk 哈希一致；记录见 `docs/qa/evidence-v11/push-2026-11-06-v1.1.0.txt`。
+- Captured at：2026-11-10
+- PROJECT_PHASE：DEVELOP（V1.2 云同步主体已交付，后台提醒已修并验收，待补测与签收）
+- DEV_BASELINE：V1.1-R2 已批准计划 + V1.2 云同步计划（APPROVED_FOR_EXECUTION）
+- 执行方式：主开发者模式（用户口令「你是主开发者·连续推进」），未派治理角色链
+- 已完成：
+  - 云端 `p059-prompter`（PG，上海，体验版 3000 点/月，2027-04-25 到期，当前 26 点）：已建 `p068_projects` / `p068_sessions`，8 条 RLS，`server_updated_at` 触发器；REST 12/12 PASS（A/B 隔离、伪造 owner 403、revision 冲突 0 行、墓碑、触发器）。
+  - 登录：仅用户名 + 密码（CloudBase 身份认证，账号 `zjyd`）；手机/邮箱/微信/匿名未启用；密码不入库、不落文档。
+  - 客户端：Room v2→v3（`projects/sessions.revision`、`projects.deletedAt`、`rep_sets.updatedAt/deletedAt`、`sync_outbox`、`sync_state`）；Outbox、条件更新、增量拉取、设置页云同步入口；单测 39/39。
+  - 真机：AC02/04/05/06/07/11 PASS；AC01/03/08/09/10 PARTIAL；AC12 OPEN。
+  - 冲突：两机同改同一记录实测——B 被 0 行更新拦下、云端未覆盖，冲突两版落 `sync_state`，UI 提供「用本机/云端覆盖」；本机覆盖路径实测通过（rev4），A 已拉齐。
+  - README 中英两份已同批改写为「默认只在本机，主动登录并确认首传后才联网」；R13 移交收口。
+  - 后台提醒（R14）已修复并真机验收：高优先级渠道 `training_alert`（importance=4、系统闹钟铃声、`USAGE_ALARM`）＋独立通知 6802（category=alarm）、提示音改闹钟流、3 次长震、精确闹钟 `RTC_WAKEUP` 兜底、结束取消；到点只发一次（2 秒去重），常驻通知只在状态变化时更新。Note 11 5G（媒体音量 0、闹钟音量 10、后台 1 分钟）通过，证据 `docs/qa/evidence-v12/notification-alert-2026-11-10.txt`。
+  - APK：`dist/P068-zai-jiu-yi-dian-v1.2.0-debug.apk`，17,010,870 字节，SHA-256 `0d22afbd144e06b2b9afa3e23f9ffe44b69286d774a4023053c5494d68fc0811`，versionCode 4 / 1.2.0；两机安装包哈希一致，B 为合并本地数据后拉取，不是覆盖。
+
 ## §2 下一步
 
-- 下一步（Next Single Action）：用户亲身体验时长、计次、历史三图与 V3 备份恢复后决定是否签收 V11R2-AC15。
-- 人要拍什么板：
-  1. 是否签收 V1.1-R2。
-  2. 是否补测 12T/12 Pro 完整计次链路、V3 自动备份轮转、深色/窄屏与锁屏语音，再决定正式分发。
-- permission_request：已按用户指令 commit/push `main`（`693f685`）；无其他待批授权。
+- Next Single Action：补测剩余 5 项 PARTIAL（AC01 抓包、AC03 幂等重放、AC08 过期 token、AC09 1.2.0 真机 V3 恢复共存、AC10 额度巡检），证据落 `docs/qa/evidence-v12/`。
+- 之后：M5 成本阈值（50/80/95% 人工巡检节奏）落登记簿，再提请 AC12 用户签收。
+- 人要拍板：
+  1. 是否签收 V1.2（AC12）；签收前需接受上述 PARTIAL 或等待补测。
 
-## §3 未完成
+## §3 未完成 / 剩 P0
 
-- 未闭环评审意见：无独立 reviewer/qa 角色链（主开发者模式）；自审与真机 QA 证据已落 `docs/qa/`。
-- 产品验收：`docs/qa/产品验收追踪矩阵-P068-V1.1-R2.md`；AC01/03/04/05/06/07/08/09/10/11 PASS，**AC02/12/13/14 PARTIAL，AC15 OPEN（待签收）**。
-- Git：V1.1 源码、文档、证据已提交 `693f685` 并推送 `origin/main`；模型账本、旧模型备份、dist 未入库。
-- 用户签收：触发依据=首次发布/V1.1 验收；证据包=`docs/qa/evidence-v11/` + `dist/`；签收人=用户；结论=**待签收**。
-- docs 落盘清单：`README.md`、`README.en.md`、`docs/architecture-facts.md`、`docs/risks.md`、`docs/qa/产品验收追踪矩阵-P068-V1.1-R2.md`、`docs/qa/QA-REPORT-P068-V1.1-R2.md`、`docs/qa/evidence-v11/`、本文件、`agent.md`、`经验一句话.md`。
-- 收尾记一笔：Note 11 保留合成 QA 项目 PullUp 与 5 条记录（4 计次 + 1 计时，含 4×12 计划样本）；Note 12 Pro 保留 PullUp 空项目；未擅自清除原有“练习 A”。R2 旧矩阵/报告仍保留。
-- 阶段复盘（2026-11-06 第三轮）：V1.1 新增踩坑（恢复子表未回填、改计划建议值、前台被抢占）已入 `agent.md`；自动化候选为空；skill 候选 S1 `android-room-versioned-backup-restore-local-zh` 待确认；jcp 未执行（无 commit/push 授权）。
+- **AC12 用户签收 OPEN**（首次发布前必须停，不代签）。
+- **PARTIAL 五项**：AC01（未抓包）、AC03（幂等未单独重放）、AC08（App 端过期 token 未测）、AC09（1.2.0 真机 V3 恢复未重跑）、AC10（无自动告警，需人工巡检）。
+- **后台提醒边界**：R14 已修并真机验收（`docs/qa/evidence-v12/notification-alert-2026-11-10.txt`）；勿扰与 OEM 省电仍为系统限制，渠道不能自行 `bypassDnd`，勿扰开启下的通过结论未取得。
+- 跨 APP 隔离未证明：两机同账号只证明用户隔离，不证明应用隔离；正式上线或第二个应用写 PG 前复评。
+- V1.1-R2 遗留：AC02/12/13/14 PARTIAL、AC15 签收 OPEN（旧矩阵 `docs/qa/产品验收追踪矩阵-P068-V1.1-R2.md`）。
+- 未闭环评审：主开发者模式无独立 reviewer/qa 角色链，自审与真机证据已落 `docs/qa/`。
+- Git：本轮文档改动未提交（无 commit/push 授权）。
 
 ## §4 红线
 
@@ -65,8 +58,12 @@
 
 ## §5 三日流水
 
-- 2026-11-06：V1.1-R2 完成四 Tab、计次训练、完整三图历史、Room v1→v2、V3 备份；32/32 测试；Note 11 主路径与 Note 12 Pro 迁移/四 Tab；APK 1.1.0 交付；AC02/12/13/14 部分与签收待闭环。
+- 2026-11-06：V1.1-R2 四 Tab、计次、三图、Room v1→v2、V3 备份；32/32；APK 1.1.0；AC02/12/13/14 部分与签收待闭环。
+- 2026-11-10：V1.2 云同步立项 → 复用 P059 → 建表/RLS/触发器 → 客户端 Room v3 + Outbox → 两机验收 → APK 1.2.0；README/架构事实/矩阵/风险/登记簿同批收口。
+- 2026-11-10：文档收口（本轮）——README 中英、`architecture-facts.md`、V1.2 矩阵、本文件、云同步计划、登记簿、`risks.md` 同步更新；未改代码、未构建、未联网。
+- 2026-11-10：冲突处理补齐并实测——`sync_state` 持久化冲突两版，云同步 sheet 提供「用本机/云端覆盖」；两机同改实测 B 不覆盖云端、本机覆盖后 A 拉齐（AC05 PASS）。
+- 2026-11-10：后台提醒（R14）修复并真机验收——`training_alert` 高优先级渠道 + 通知 6802、闹钟流提示音、3 次长震、`RTC_WAKEUP` 精确闹钟兜底；到点只发一次（2 秒去重），常驻通知仅状态变化时更新；APK 重新出包 17,010,870 字节 / `0d22afbd…`。勿扰与 OEM 省电仍为系统限制。
 
 ## §6 接续提示词
 
-先读本文件 §0–§3、V1.1 验收矩阵与 evidence-v11；四 Tab/计次/三图/V3 已交付并推送 `693f685`，只差 12T/12 Pro 完整链路、V3 自动备份失败专项与用户签收，不得自行宣布完工或发布。新需求先核实是否改变已批准交互，再改代码并补证据。
+先读本文件 §0–§3 与 `docs/qa/产品验收追踪矩阵-P068-V1.2.md`。云同步主体已交付（APK 1.2.0，两机哈希一致），后台提醒 R14 已修并验收；未完成的是 5 项 PARTIAL 补测与 AC12 签收。不得把 PARTIAL 写成 PASS，不得自行宣布完工或发布；commit/push 需用户明确指令。

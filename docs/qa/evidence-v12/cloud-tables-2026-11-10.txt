@@ -1,0 +1,14 @@
+env=p059-prompter-d6gzk482uf502540d table=p068_projects record=p068proj-1794295476
+PASS	A/B 登录	uid_a=2120048931950108674 uid_b=2120048980967911425
+PASS	A 建项目	HTTP 201 owner_auto=True
+PASS	A 读回	HTTP 200 rows=1
+PASS	B 读 A（0 行）	HTTP 200 rows=0
+PASS	B 伪造 owner（拒）	HTTP 403
+PASS	B 用错 revision 改 A（0 行）	HTTP 200 rows=0
+PASS	A 正确 revision 更新	HTTP 200 rev=2
+PASS	触发器刷新 server_updated_at	2026-11-10T15:24:36.853439+08:00 -> 2026-11-10T15:24:39.529743+08:00
+PASS	旧 revision 重放（0 行）	HTTP 200 rows=0
+PASS	A 墓碑删除	HTTP 200 deleted_at=2026-11-10T08:00:00+08:00
+PASS	B 仍读不到	HTTP 200
+PASS	A 清理测试行	HTTP 204
+SUMMARY 12/12 PASS

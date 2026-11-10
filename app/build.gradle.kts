@@ -1,9 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
+
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun prop(key: String): String = "\"${localProps.getProperty(key) ?: ""}\""
 
 android {
     namespace = "com.wanghoufan.zaijiuyidian"
@@ -13,9 +21,12 @@ android {
         applicationId = "com.wanghoufan.zaijiuyidian"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.1.0"
+        versionCode = 4
+        versionName = "1.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "CLOUDBASE_ENV_ID", prop("CLOUDBASE_ENV_ID"))
+        buildConfigField("String", "CLOUDBASE_REGION", prop("CLOUDBASE_REGION"))
+        buildConfigField("String", "CLOUDBASE_PUBLISHABLE_KEY", prop("CLOUDBASE_PUBLISHABLE_KEY"))
     }
 
     buildTypes {
@@ -75,6 +86,7 @@ dependencies {
     implementation("androidx.room:room-ktx:2.7.2")
     ksp("androidx.room:room-compiler:2.7.2")
     implementation("androidx.datastore:datastore-preferences:1.1.7")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

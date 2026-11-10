@@ -10,14 +10,20 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProjectDao {
-    @Query("SELECT * FROM projects ORDER BY archivedAt IS NOT NULL, createdAt ASC")
+    @Query("SELECT * FROM projects WHERE deletedAt IS NULL ORDER BY archivedAt IS NOT NULL, createdAt ASC")
     fun observeAll(): Flow<List<ProjectEntity>>
 
-    @Query("SELECT * FROM projects WHERE id = :id")
+    @Query("SELECT * FROM projects WHERE id = :id AND deletedAt IS NULL")
     suspend fun findById(id: String): ProjectEntity?
 
-    @Query("SELECT * FROM projects")
+    @Query("SELECT * FROM projects WHERE id = :id")
+    suspend fun findByIdAny(id: String): ProjectEntity?
+
+    @Query("SELECT * FROM projects WHERE deletedAt IS NULL")
     suspend fun getAll(): List<ProjectEntity>
+
+    @Query("SELECT * FROM projects")
+    suspend fun getAllIncludingDeleted(): List<ProjectEntity>
 
     @Query("SELECT COUNT(*) FROM sessions WHERE projectId = :projectId")
     suspend fun sessionCount(projectId: String): Int
@@ -31,8 +37,17 @@ interface ProjectDao {
     @Update
     suspend fun update(project: ProjectEntity)
 
+    @Transaction
+    suspend fun updateBumped(project: ProjectEntity) {
+        val current = findByIdAny(project.id) ?: return
+        update(project.copy(revision = current.revision + 1))
+    }
+
     @Query("DELETE FROM projects WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("UPDATE projects SET deletedAt = :now, updatedAt = :now, revision = revision + 1 WHERE id = :id AND deletedAt IS NULL")
+    suspend fun softDelete(id: String, now: Long)
 
     @Query("DELETE FROM projects")
     suspend fun deleteAll()
@@ -61,10 +76,16 @@ interface SessionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(sessions: List<SessionEntity>)
 
-    @Query("UPDATE sessions SET deletedAt = :deletedAt, updatedAt = :deletedAt WHERE id = :id AND deletedAt IS NULL")
+    @Transaction
+    suspend fun upsertBumped(session: SessionEntity) {
+        val current = findById(session.id)
+        upsert(session.copy(revision = (current?.revision ?: 0) + 1))
+    }
+
+    @Query("UPDATE sessions SET deletedAt = :deletedAt, updatedAt = :deletedAt, revision = revision + 1 WHERE id = :id AND deletedAt IS NULL")
     suspend fun softDelete(id: String, deletedAt: Long)
 
-    @Query("UPDATE sessions SET deletedAt = NULL, updatedAt = :now WHERE id = :id")
+    @Query("UPDATE sessions SET deletedAt = NULL, updatedAt = :now, revision = revision + 1 WHERE id = :id")
     suspend fun restore(id: String, now: Long)
 
     @Query("DELETE FROM sessions WHERE id = :id")
@@ -111,8 +132,7 @@ interface RepDraftDao {
 }
 
 @Dao
-interface ActiveSessionDao {
-    @Query("SELECT * FROM active_session WHERE id = 1")
+interface ActiveSessionDao {    @Query("SELECT * FROM active_session WHERE id = 1")
     suspend fun get(): ActiveSessionEntity?
 
     @Query("SELECT * FROM active_session WHERE id = 1")
@@ -129,4 +149,40 @@ interface ActiveSessionDao {
         delete()
         if (session != null) upsert(session)
     }
+}
+
+@Dao
+interface SyncOutboxDao {
+    @Query("SELECT * FROM sync_outbox ORDER BY createdAt ASC")
+    suspend fun getAll(): List<SyncOutboxEntity>
+
+    @Query("SELECT COUNT(*) FROM sync_outbox")
+    fun observeCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM sync_outbox")
+    suspend fun count(): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun enqueue(item: SyncOutboxEntity)
+
+    @Query("DELETE FROM sync_outbox WHERE mutationId = :mutationId")
+    suspend fun delete(mutationId: String)
+
+    @Query("UPDATE sync_outbox SET attempts = attempts + 1, lastError = :error WHERE mutationId = :mutationId")
+    suspend fun markFailed(mutationId: String, error: String?)
+
+    @Query("DELETE FROM sync_outbox")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface SyncStateDao {
+    @Query("SELECT value FROM sync_state WHERE key = :key")
+    suspend fun get(key: String): String?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun put(state: SyncStateEntity)
+
+    @Query("DELETE FROM sync_state")
+    suspend fun deleteAll()
 }

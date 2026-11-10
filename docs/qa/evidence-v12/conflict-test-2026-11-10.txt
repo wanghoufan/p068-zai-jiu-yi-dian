@@ -1,0 +1,21 @@
+# V12-AC05 两机冲突实测（2026-11-10）
+
+- 设备：Note 11 5G（Android 11）+ 22101316C（Android 14），同账号 zjyd
+- 记录：session id `84599815-b9b9-47e8-a2c5-a9a656ba9238`（PullUp，2 组）
+- APK：versionCode 4 / 1.2.0，SHA-256 `eab1da8b1dfa71a0184995b3141559da29ede520c319561a9b71ac814490b52b`
+
+步骤与回读：
+
+1. 两机先同步到同一版本：云端 rev2，note=`A-note`；两机本地 revision=2。
+2. 两机同时断网（`svc wifi disable` + `svc data disable`）。
+3. A 端编辑同一条记录备注为 `A2-note` → 本地 revision=3，sync_outbox=1。
+4. B 端编辑同一条记录备注为 `B2-note` → 本地 revision=3，sync_outbox=1。
+5. A 先联网同步 → 云端 rev3，note=`A2-note`。
+6. B 联网同步 → 条件更新 `revision=eq.2` 影响 0 行：
+   - 云端仍为 rev3 `A2-note`（未被覆盖）；
+   - B 端 UI：「1 条改动与云端冲突，已保留本机版本」+「冲突：记录 84599815」+「用本机覆盖 / 用云端覆盖」两个按钮；
+   - 冲突两侧 payload 写入 `sync_state`，可跨进程重启读回。
+7. B 点「用本机覆盖」→ 云端 rev4，note=`B2-note`；B 冲突列表清空，状态「已同步」。
+8. A 再同步 → 拉到 rev4，本地 revision=4，note=`B2-note`；`sync_outbox=0`。
+
+结论：不静默覆盖；冲突两版均可查看/选择；本机覆盖路径实测通过。云端覆盖按钮实现但本轮未单独实跑。

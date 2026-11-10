@@ -33,6 +33,9 @@ secrets.*
 *.token
 
 # 本地数据与缓存
+local.properties
+docs/填密钥-*.md
+.codeartsdoer/
 *.log
 *.sqlite
 *.sqlite3

@@ -45,6 +45,7 @@ import com.wanghoufan.zaijiuyidian.ui.EntryDraft
 import com.wanghoufan.zaijiuyidian.ui.RepEntryDraft
 import com.wanghoufan.zaijiuyidian.ui.Sheet
 import com.wanghoufan.zaijiuyidian.ui.UiState
+import com.wanghoufan.zaijiuyidian.data.sync.SyncPhase
 import com.wanghoufan.zaijiuyidian.ui.components.AppCard
 import com.wanghoufan.zaijiuyidian.ui.components.AppSwitch
 import com.wanghoufan.zaijiuyidian.ui.components.AppTextField
@@ -178,6 +179,7 @@ fun SheetsHost(
                 Sheet.BackupManager -> BackupManagerSheet(state, vm, onPickBackupFolder)
                 is Sheet.BackupRestorePreview -> BackupRestorePreviewSheet(state, vm, sheet.entry)
                 Sheet.SortInfo -> SortInfoSheet(vm)
+                Sheet.SyncInfo -> CloudSyncSheet(state, vm)
                 else -> Unit
             }
         }
@@ -1153,4 +1155,104 @@ private fun BackupRestorePreviewSheet(state: UiState, vm: AppViewModel, entry: B
         confirmText = "确认恢复",
         confirm = { vm.confirmRestoreBackup(entry) }
     )
+}
+
+@Composable
+private fun CloudSyncSheet(state: UiState, vm: AppViewModel) {
+    val p = AppTheme.palette
+    val s = state.sync
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
+    SheetTitle(
+        "云同步",
+        "登录后，多台手机共用同一份训练记录。数据默认仍保存在本机，未开启时不会联网。"
+    )
+
+    when {
+        !s.configured -> {
+            Text(
+                "当前构建没有配置云环境，云同步不可用。训练与备份功能不受影响。",
+                color = p.sub,
+                fontSize = 12.sp,
+                lineHeight = 18.sp
+            )
+        }
+        !s.signedIn -> {
+            Text("账号由管理员在云环境创建，本应用不提供注册入口。", color = p.sub, fontSize = 12.sp)
+            Spacer(Modifier.height(12.dp))
+            AppTextField(username, { username = it }, placeholder = "账号")
+            Spacer(Modifier.height(8.dp))
+            AppTextField(
+                password,
+                { password = it },
+                placeholder = "密码",
+                keyboardType = KeyboardType.Password
+            )
+            Spacer(Modifier.height(14.dp))
+            PrimaryButton("登录", { vm.cloudSignIn(username.trim(), password) })
+        }
+        s.phase == SyncPhase.NEED_UPLOAD -> {
+            Text("首次上传前请确认：", color = p.ink, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "本机有 ${s.previewProjects} 个项目、${s.previewSessions} 条训练记录，将上传到你的云端账号。",
+                color = p.sub,
+                fontSize = 12.sp,
+                lineHeight = 18.sp
+            )
+            Spacer(Modifier.height(14.dp))
+            PrimaryButton("确认上传并开启同步", { vm.cloudUploadInitial() })
+            Spacer(Modifier.height(8.dp))
+            SecondaryButton("刷新预览", { vm.openCloudSync() })
+            Spacer(Modifier.height(8.dp))
+            SecondaryButton("退出登录", { vm.cloudSignOut() })
+        }
+        else -> {
+            val status = when (s.phase) {
+                SyncPhase.SYNCING -> "同步中…"
+                SyncPhase.ERROR -> s.message ?: "同步失败"
+                else -> when {
+                    s.pending > 0 -> "待同步 ${s.pending} 条"
+                    s.conflicts > 0 -> "${s.conflicts} 条冲突，已保留本机版本"
+                    s.lastSyncAt != null -> "已同步 · 上次 ${Formatters.dateTime(s.lastSyncAt)}"
+                    else -> "已开启 · 等待首次同步"
+                }
+            }
+            Text("账号：${s.account ?: "-"}", color = p.ink, fontSize = 13.sp)
+            Spacer(Modifier.height(6.dp))
+            Text(status, color = if (s.phase == SyncPhase.ERROR) p.red else p.sub, fontSize = 12.sp)
+            Spacer(Modifier.height(14.dp))
+            if (s.conflictItems.isNotEmpty()) {
+                s.conflictItems.forEach { item ->
+                    val label = if (item.entity == "project") "项目" else "记录"
+                    Text(
+                        "冲突：$label ${item.recordId.take(8)}",
+                        color = p.ink,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        SecondaryButton("用本机覆盖", { vm.resolveSyncConflictKeepLocal(item) }, Modifier.weight(1f))
+                        SecondaryButton("用云端覆盖", { vm.resolveSyncConflictUseCloud(item) }, Modifier.weight(1f))
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+            }
+            PrimaryButton("立即同步", { vm.cloudSyncNow() })
+            Spacer(Modifier.height(8.dp))
+            SecondaryButton("退出登录", { vm.cloudSignOut() })
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "退出只清除本机登录状态，不会删除本机或云端记录。",
+                color = p.sub,
+                fontSize = 11.sp,
+                lineHeight = 16.sp
+            )
+        }
+    }
 }

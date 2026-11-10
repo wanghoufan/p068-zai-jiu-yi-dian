@@ -22,6 +22,7 @@ import com.wanghoufan.zaijiuyidian.data.backup.BackupPreview
 import com.wanghoufan.zaijiuyidian.data.backup.AutoBackupManager
 import com.wanghoufan.zaijiuyidian.data.backup.BackupEntry
 import com.wanghoufan.zaijiuyidian.data.backup.BackupRepository
+import com.wanghoufan.zaijiuyidian.audio.TrainingAlerts
 import com.wanghoufan.zaijiuyidian.audio.TrainingServiceController
 import com.wanghoufan.zaijiuyidian.audio.TrainingServiceState
 import com.wanghoufan.zaijiuyidian.data.db.ActiveSessionEntity
@@ -30,7 +31,12 @@ import com.wanghoufan.zaijiuyidian.data.db.ProjectEntity
 import com.wanghoufan.zaijiuyidian.data.db.RepDraftEntity
 import com.wanghoufan.zaijiuyidian.data.db.RepSetEntity
 import com.wanghoufan.zaijiuyidian.data.db.SessionEntity
+import com.wanghoufan.zaijiuyidian.data.db.SyncOutboxEntity
 import com.wanghoufan.zaijiuyidian.data.prefs.SettingsRepository
+import com.wanghoufan.zaijiuyidian.data.sync.SyncManager
+import com.wanghoufan.zaijiuyidian.data.sync.SyncConflictItem
+import com.wanghoufan.zaijiuyidian.data.sync.SyncPhase
+import com.wanghoufan.zaijiuyidian.data.sync.SyncStatus
 import com.wanghoufan.zaijiuyidian.domain.AppSettings
 import com.wanghoufan.zaijiuyidian.domain.ChartMode
 import com.wanghoufan.zaijiuyidian.domain.DefaultSettings
@@ -97,6 +103,7 @@ sealed interface Sheet {
     data class BackupRestorePreview(val entry: BackupEntry) : Sheet
     data object SortInfo : Sheet
     data class ArchiveConfirm(val projectId: String) : Sheet
+    data object SyncInfo : Sheet
     data class DeleteProjectConfirm(val projectId: String) : Sheet
 }
 
@@ -151,7 +158,8 @@ data class UiState(
     val serviceActive: Boolean = false,
     val busy: Boolean = false,
     val dataRevision: Long = 0,
-    val repDraft: RepDraftEntity? = null
+    val repDraft: RepDraftEntity? = null,
+    val sync: SyncStatus = SyncStatus()
 ) {
     val selectedProject: Project?
         get() {
@@ -185,6 +193,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val settingsRepo = SettingsRepository(app)
     private val backupRepo = BackupRepository(app, db)
     private val autoBackup = AutoBackupManager(app, db, backupRepo, settingsRepo)
+    val syncManager = SyncManager(app, db)
     private val appContext: Context = app.applicationContext
 
     private val _state = MutableStateFlow(UiState())
@@ -314,6 +323,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             delay(1500)
             backupArmed = true
+        }
+        viewModelScope.launch {
+            syncManager.status.collect { status ->
+                _state.update { it.copy(sync = status) }
+            }
+        }
+        viewModelScope.launch {
+            db.syncOutboxDao().observeCount().collect { count ->
+                _state.update { it.copy(sync = it.sync.copy(pending = count)) }
+            }
         }
         startTicker()
     }
@@ -518,7 +537,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         val targetSec = Math.round(minutes * 60).toInt().coerceIn(60, 18_000)
         viewModelScope.launch(Dispatchers.IO) {
-            db.projectDao().update(
+            saveProject(
                 ProjectEntity(
                     id = project.id,
                     name = project.name,
@@ -549,7 +568,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         val presets = minutes.map { Math.round(it * 60).toInt() }.distinct().sorted()
         viewModelScope.launch(Dispatchers.IO) {
-            db.projectDao().update(
+            saveProject(
                 ProjectEntity(
                     id = project.id,
                     name = project.name,
@@ -615,6 +634,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 targetRepsPerSet = targetRepsPerSet
             )
             db.projectDao().upsert(entity)
+            syncManager.enqueueProject(entity.id, SyncOutboxEntity.OP_UPSERT)
             settingsRepo.setSelectedProject(entity.id)
             if (mode == TrainingMode.TIME) {
                 settingsRepo.setLastTimeProject(entity.id)
@@ -647,7 +667,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
-            db.projectDao().update(
+            saveProject(
                 ProjectEntity(
                     id = project.id,
                     name = project.name,
@@ -682,7 +702,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
-            db.projectDao().update(
+            saveProject(
                 ProjectEntity(
                     id = project.id,
                     name = trimmed,
@@ -738,7 +758,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Math.round(targetMinutes * 60).toInt().coerceIn(60, 18_000)
         }
         viewModelScope.launch(Dispatchers.IO) {
-            db.projectDao().update(
+            saveProject(
                 ProjectEntity(
                     id = project.id,
                     name = trimmed,
@@ -772,7 +792,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
-            db.projectDao().update(
+            saveProject(
                 ProjectEntity(
                     id = project.id,
                     name = project.name,
@@ -794,7 +814,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun restoreProject(projectId: String) {
         val project = _state.value.projects.firstOrNull { it.id == projectId } ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            db.projectDao().update(
+            saveProject(
                 ProjectEntity(
                     id = project.id,
                     name = project.name,
@@ -843,7 +863,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
-            db.projectDao().deleteById(projectId)
+            val now = System.currentTimeMillis()
+            db.projectDao().softDelete(projectId, now)
+            syncManager.enqueueProject(projectId, SyncOutboxEntity.OP_DELETE)
             withContext(Dispatchers.Main) {
                 _state.update { it.copy(sheet = null) }
                 showToast("项目已删除")
@@ -893,6 +915,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         intervalSessionStartWall = nowWall
         viewModelScope.launch(Dispatchers.IO) { db.activeSessionDao().upsert(session) }
         _state.update { it.copy(active = session, elapsedMs = 0, interruptedPrompt = null) }
+        scheduleTargetAlarm(session)
         val serviceStarted = TrainingServiceController.start(appContext)
         emitVoice(VoiceKind.START)
         val notificationsAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -1057,6 +1080,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun discardRepDraft() {
         viewModelScope.launch(Dispatchers.IO) {
             db.repDraftDao().delete()
+            TrainingAlerts.cancelNotification(appContext)
             withContext(Dispatchers.Main) {
                 _state.update { it.copy(sheet = null) }
                 showToast("草稿已放弃")
@@ -1103,10 +1127,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch(Dispatchers.IO) {
             db.withTransaction {
-                db.sessionDao().upsert(session)
+                db.sessionDao().upsertBumped(session)
                 db.repSetDao().upsertAll(sets)
                 db.repDraftDao().delete()
             }
+            syncManager.enqueueSession(sessionId, SyncOutboxEntity.OP_UPSERT)
             withContext(Dispatchers.Main) {
                 _state.update {
                     it.copy(
@@ -1126,6 +1151,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (TimerMath.isPaused(active)) return
         val nowElapsed = SystemClock.elapsedRealtime()
         val paused = TimerMath.pause(active, nowElapsed)
+        TrainingAlerts.cancelAlarm(appContext, alarmSessionId(active))
         viewModelScope.launch(Dispatchers.IO) { db.activeSessionDao().upsert(paused) }
         _state.update { it.copy(active = paused, elapsedMs = paused.accumulatedMs) }
     }
@@ -1137,6 +1163,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val nowElapsed = SystemClock.elapsedRealtime()
         val resumed = TimerMath.resume(active, nowElapsed)
         lastCheckpointWall = System.currentTimeMillis()
+        scheduleTargetAlarm(resumed)
         viewModelScope.launch(Dispatchers.IO) { db.activeSessionDao().upsert(resumed) }
         _state.update { it.copy(active = resumed) }
     }
@@ -1154,6 +1181,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         val nowElapsed = SystemClock.elapsedRealtime()
         val snapshot = TimerMath.finish(active, nowElapsed, System.currentTimeMillis())
+        TrainingAlerts.cancelAll(appContext, alarmSessionId(active))
         _state.update {
             it.copy(
                 sheet = Sheet.FinishConfirm(
@@ -1201,6 +1229,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         )
         viewModelScope.launch(Dispatchers.IO) {
             db.withTransactionSave(session, clearActive = true)
+            TrainingAlerts.cancelAll(appContext, alarmSessionId(active))
             TrainingServiceController.stop(appContext)
             withContext(Dispatchers.Main) {
                 _state.update {
@@ -1221,6 +1250,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val active = _state.value.active ?: return
         viewModelScope.launch(Dispatchers.IO) {
             db.activeSessionDao().delete()
+            TrainingAlerts.cancelAll(appContext, alarmSessionId(active))
             TrainingServiceController.stop(appContext)
             withContext(Dispatchers.Main) {
                 _state.update { it.copy(sheet = null, active = null, elapsedMs = 0) }
@@ -1235,6 +1265,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!save || actualSec <= 0) {
             viewModelScope.launch(Dispatchers.IO) {
                 db.activeSessionDao().delete()
+                TrainingAlerts.cancelAll(appContext, alarmSessionId(active))
                 TrainingServiceController.stop(appContext)
                 withContext(Dispatchers.Main) {
                     _state.update { it.copy(interruptedPrompt = null, active = null) }
@@ -1263,6 +1294,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         )
         viewModelScope.launch(Dispatchers.IO) {
             db.withTransactionSave(session, clearActive = true)
+            TrainingAlerts.cancelAll(appContext, alarmSessionId(active))
             TrainingServiceController.stop(appContext)
             withContext(Dispatchers.Main) {
                 _state.update {
@@ -1282,7 +1314,72 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun dismissSheet() {
+        val dismissed = _state.value.sheet
         _state.update { it.copy(sheet = null) }
+        if (dismissed is Sheet.FinishConfirm) {
+            val active = _state.value.active
+            if (active != null && !active.interrupted && !TimerMath.isPaused(active)) {
+                scheduleTargetAlarm(active)
+            }
+        }
+    }
+
+    private fun alarmSessionId(active: ActiveSessionEntity): String =
+        "${active.projectId}:${active.startedAtWall}"
+
+    private fun scheduleTargetAlarm(active: ActiveSessionEntity) {
+        if (active.interrupted) return
+        val name = _state.value.projects.firstOrNull { it.id == active.projectId }?.name
+        val elapsed = TimerMath.elapsedMs(active, SystemClock.elapsedRealtime())
+        TrainingAlerts.schedule(
+            appContext,
+            alarmSessionId(active),
+            name,
+            active.targetSec,
+            active.targetSec * 1000L - elapsed
+        )
+    }
+
+    fun testTargetAlert() {
+        val project = _state.value.activeProject ?: _state.value.selectedProject
+        TrainingAlerts.notifyTarget(
+            appContext,
+            project?.name,
+            project?.defaultTargetSec ?: 60
+        )
+        showToast("已发送测试到点提醒")
+    }
+
+    fun notificationsAllowed(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+    fun exactAlarmsAllowed(): Boolean = TrainingAlerts.isExactAlarmAllowed(appContext)
+
+    fun openNotificationSettings() {
+        runCatching {
+            appContext.startActivity(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, appContext.packageName)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+        }
+    }
+
+    fun openExactAlarmSettings() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        runCatching {
+            appContext.startActivity(
+                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = Uri.parse("package:${appContext.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+        }
     }
 
     fun saveEntry(draft: EntryDraft) {
@@ -1332,7 +1429,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             targetRepsPerSet = 10
         )
         viewModelScope.launch(Dispatchers.IO) {
-            db.sessionDao().upsert(session)
+            db.sessionDao().upsertBumped(session)
+            syncManager.enqueueSession(session.id, SyncOutboxEntity.OP_UPSERT)
             withContext(Dispatchers.Main) {
                 _state.update { it.copy(sheet = null) }
                 showToast(if (existing == null) "已补录记录" else "记录已更新")
@@ -1421,10 +1519,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch(Dispatchers.IO) {
             db.withTransaction {
-                db.sessionDao().upsert(session)
+                db.sessionDao().upsertBumped(session)
                 db.repSetDao().deleteForSession(sessionId)
                 db.repSetDao().upsertAll(sets)
             }
+            syncManager.enqueueSession(sessionId, SyncOutboxEntity.OP_UPSERT)
             withContext(Dispatchers.Main) {
                 _state.update { it.copy(sheet = null) }
                 showToast(if (existing == null) "已补录计次记录" else "计次记录已更新")
@@ -1441,6 +1540,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val now = System.currentTimeMillis()
         viewModelScope.launch(Dispatchers.IO) {
             db.sessionDao().softDelete(sheet.sessionId, now)
+            syncManager.enqueueSession(sheet.sessionId, SyncOutboxEntity.OP_DELETE)
             withContext(Dispatchers.Main) {
                 _state.update {
                     it.copy(
@@ -1461,6 +1561,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun restoreSession(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
             db.sessionDao().restore(id, System.currentTimeMillis())
+            syncManager.enqueueSession(id, SyncOutboxEntity.OP_UPSERT)
             withContext(Dispatchers.Main) {
                 _state.update { it.copy(pendingDeleteId = null, toast = null) }
                 showToast("已恢复记录")
@@ -1718,6 +1819,80 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     ) else base
                 )
             }
+        }
+    }
+
+    private suspend fun saveProject(entity: ProjectEntity) {
+        db.projectDao().updateBumped(entity)
+        syncManager.enqueueProject(entity.id, SyncOutboxEntity.OP_UPSERT)
+    }
+
+    private suspend fun saveSession(entity: SessionEntity) {
+        db.sessionDao().upsertBumped(entity)
+        syncManager.enqueueSession(entity.id, SyncOutboxEntity.OP_UPSERT)
+    }
+
+    fun openCloudSync() {
+        _state.update { it.copy(sheet = Sheet.SyncInfo) }
+        viewModelScope.launch {
+            syncManager.refreshPending()
+            if (_state.value.sync.signedIn && _state.value.sync.phase == SyncPhase.NEED_UPLOAD) {
+                syncManager.prepareInitialPreview()
+            }
+        }
+    }
+
+    fun cloudSignIn(username: String, password: String) {
+        if (username.isBlank() || password.isBlank()) {
+            showToast("请输入账号和密码")
+            return
+        }
+        viewModelScope.launch {
+            syncManager.signIn(username, password)
+                .onSuccess {
+                    syncManager.prepareInitialPreview()
+                    showToast("已登录，请确认首次上传")
+                }
+                .onFailure { showToast(it.message ?: "登录失败") }
+        }
+    }
+
+    fun cloudUploadInitial() {
+        viewModelScope.launch {
+            syncManager.uploadInitial()
+                .onSuccess { showToast("首次上传完成，已开启云同步") }
+                .onFailure { showToast(syncManager.status.value.message ?: "上传失败") }
+        }
+    }
+
+    fun cloudSyncNow() {
+        viewModelScope.launch {
+            syncManager.syncNow()
+                .onSuccess { showToast("已同步") }
+                .onFailure { showToast(syncManager.status.value.message ?: "同步失败") }
+        }
+    }
+
+    fun cloudSignOut() {
+        viewModelScope.launch {
+            syncManager.signOut()
+            showToast("已退出云同步，本机数据未删除")
+        }
+    }
+
+    fun resolveSyncConflictKeepLocal(item: SyncConflictItem) {
+        viewModelScope.launch {
+            syncManager.resolveKeepLocal(item.entity, item.recordId)
+                .onSuccess { showToast("已用本机版本覆盖云端") }
+                .onFailure { showToast(it.message ?: "处理冲突失败") }
+        }
+    }
+
+    fun resolveSyncConflictUseCloud(item: SyncConflictItem) {
+        viewModelScope.launch {
+            syncManager.resolveUseCloud(item.entity, item.recordId)
+                .onSuccess { showToast("已用云端版本覆盖本机") }
+                .onFailure { showToast(it.message ?: "处理冲突失败") }
         }
     }
 

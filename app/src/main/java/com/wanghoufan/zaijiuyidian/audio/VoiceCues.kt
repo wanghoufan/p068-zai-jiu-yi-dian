@@ -70,8 +70,8 @@ object VoiceCues {
         return runCatching {
             val ctx: Context = com.wanghoufan.zaijiuyidian.ZaiJiuApp.instance
             val attrs = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
             val sp = SoundPool.Builder().setMaxStreams(2).setAudioAttributes(attrs).build()
             sp.setOnLoadCompleteListener { _, sampleId, status ->

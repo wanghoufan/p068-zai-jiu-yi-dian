@@ -17,7 +17,9 @@ data class ProjectEntity(
     val updatedAt: Long,
     @ColumnInfo(defaultValue = "TIME") val mode: String = MODE_TIME,
     @ColumnInfo(defaultValue = "3") val plannedSets: Int = 3,
-    @ColumnInfo(defaultValue = "10") val targetRepsPerSet: Int = 10
+    @ColumnInfo(defaultValue = "10") val targetRepsPerSet: Int = 10,
+    @ColumnInfo(defaultValue = "1") val revision: Int = 1,
+    val deletedAt: Long? = null
 ) {
     val presets: List<Int>
         get() = presetsSec.split(',').mapNotNull { it.trim().toIntOrNull() }.ifEmpty { listOf(15, 20, 25) }
@@ -56,7 +58,8 @@ data class SessionEntity(
     val deletedAt: Long? = null,
     @ColumnInfo(defaultValue = "TIME") val mode: String = MODE_TIME,
     @ColumnInfo(defaultValue = "3") val plannedSets: Int = 3,
-    @ColumnInfo(defaultValue = "10") val targetRepsPerSet: Int = 10
+    @ColumnInfo(defaultValue = "10") val targetRepsPerSet: Int = 10,
+    @ColumnInfo(defaultValue = "1") val revision: Int = 1
 ) {
     companion object {
         const val SOURCE_TIMER = "timer"
@@ -87,7 +90,9 @@ data class RepSetEntity(
     @PrimaryKey val id: String,
     val sessionId: String,
     val ordinal: Int,
-    val actualReps: Int
+    val actualReps: Int,
+    val updatedAt: Long? = null,
+    val deletedAt: Long? = null
 )
 
 @Entity(tableName = "rep_draft")
@@ -107,6 +112,32 @@ data class RepDraftEntity(
         const val SINGLETON_ID = 1
     }
 }
+
+@Entity(tableName = "sync_outbox")
+data class SyncOutboxEntity(
+    @PrimaryKey val mutationId: String,
+    val entity: String,
+    val recordId: String,
+    val op: String,
+    val payload: String,
+    val baseRevision: Int,
+    val createdAt: Long,
+    val attempts: Int = 0,
+    val lastError: String? = null
+) {
+    companion object {
+        const val ENTITY_PROJECT = "project"
+        const val ENTITY_SESSION = "session"
+        const val OP_UPSERT = "upsert"
+        const val OP_DELETE = "delete"
+    }
+}
+
+@Entity(tableName = "sync_state")
+data class SyncStateEntity(
+    @PrimaryKey val key: String,
+    val value: String
+)
 
 @Entity(tableName = "active_session")
 data class ActiveSessionEntity(

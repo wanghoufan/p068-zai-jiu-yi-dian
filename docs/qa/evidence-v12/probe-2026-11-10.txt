@@ -1,0 +1,15 @@
+env=p059-prompter-d6gzk482uf502540d table=p068_probe_sessions record=probe-1794294083 uid_a=2120048931950108674 uid_b=2120048980967911425
+PASS	A 登录	HTTP 200 sub=2120048931950108674
+PASS	B 登录	HTTP 200 sub=2120048980967911425
+PASS	A 写入	HTTP 201 owner=auto
+PASS	A 读回	HTTP 200 rows=1
+PASS	B 读 A（应 0 行）	HTTP 200 rows=0
+PASS	B 伪造 owner 写入（应拒）	HTTP 403 / {"code":"DATABASE_42501","message":"new row violates row-level security policy f
+PASS	B 改 A（应 0 行）	HTTP 200 / []
+PASS	B 删 A（应 0 行且记录仍在）	HTTP 204 / A 侧剩余 1
+PASS	anon 读（不可见 A 的行）	HTTP 200 -> []
+PASS	anon 写（应拒）	HTTP 401 / {"code":"DATABASE_42501","message":"permission denied for table p068_probe_sessi
+PASS	伪造 token（应拒）	HTTP 401 / {"code":"INVALID_CREDENTIALS","message":"Credentials are invalid. For more infor
+PASS	A 改自己	HTTP 200 revision=2
+PASS	A 最终读回	HTTP 200 total_reps=41
+SUMMARY 13/13 PASS

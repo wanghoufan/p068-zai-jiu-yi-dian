@@ -5,10 +5,14 @@ import androidx.test.core.app.ApplicationProvider
 import com.wanghoufan.zaijiuyidian.data.db.AppDatabase
 import com.wanghoufan.zaijiuyidian.data.db.ProjectEntity
 import com.wanghoufan.zaijiuyidian.data.db.SessionEntity
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -72,6 +76,54 @@ class ProjectDaoTest {
         assertNotNull(updated.archivedAt)
         assertEquals(1, db.sessionDao().getLive().size)
         assertEquals("s1", db.sessionDao().getLive().first().id)
+    }
+
+    @Test
+    fun updateBumped_bumpsRevisionOnEveryWrite() = runBlocking {
+        val now = 1_700_000_000_000L
+        val project = ProjectEntity(
+            id = "p1",
+            name = "平板支撑",
+            defaultTargetSec = 1500,
+            presetsSec = "900,1200,1500",
+            createdAt = now,
+            updatedAt = now
+        )
+        db.projectDao().upsert(project)
+        db.projectDao().updateBumped(project.copy(name = "第一次改名", updatedAt = now + 1))
+        db.projectDao().updateBumped(project.copy(name = "第二次改名", updatedAt = now + 2))
+
+        val updated = db.projectDao().findByIdAny("p1")
+        assertNotNull(updated)
+        assertEquals("第二次改名", updated!!.name)
+        assertEquals(3, updated.revision)
+    }
+
+    @Test
+    fun softDelete_hidesFromListsButKeepsRowForSync() = runBlocking {
+        val now = 1_700_000_000_000L
+        db.projectDao().upsert(
+            ProjectEntity(
+                id = "p1",
+                name = "平板支撑",
+                defaultTargetSec = 1500,
+                presetsSec = "900,1200,1500",
+                createdAt = now,
+                updatedAt = now
+            )
+        )
+
+        db.projectDao().softDelete("p1", now + 10)
+
+        assertTrue(db.projectDao().getAll().isEmpty())
+        assertTrue(withTimeout(10_000) { db.projectDao().observeAll().first() }.isEmpty())
+        assertNull(db.projectDao().findById("p1"))
+
+        val any = db.projectDao().findByIdAny("p1")
+        assertNotNull(any)
+        assertEquals(now + 10, any!!.deletedAt)
+        assertEquals(2, any.revision)
+        assertEquals(1, db.projectDao().getAllIncludingDeleted().size)
     }
 
     @Test

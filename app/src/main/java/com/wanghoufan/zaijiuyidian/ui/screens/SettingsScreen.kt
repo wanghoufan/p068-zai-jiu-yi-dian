@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wanghoufan.zaijiuyidian.BuildConfig
+import com.wanghoufan.zaijiuyidian.data.sync.SyncPhase
 import com.wanghoufan.zaijiuyidian.domain.FontScaleOptions
 import com.wanghoufan.zaijiuyidian.domain.Formatters
 import com.wanghoufan.zaijiuyidian.domain.ThemeMode
@@ -105,6 +106,36 @@ fun SettingsScreen(
                     AppSwitch(state.settings.voiceEnabled) { vm.toggleVoice() }
                 }
             )
+            val notificationsOk = vm.notificationsAllowed()
+            val exactAlarmsOk = vm.exactAlarmsAllowed()
+            if (!notificationsOk) {
+                DividerLine()
+                SettingsRow(
+                    name = "通知权限未开启",
+                    detail = "系统不会显示到点提醒；点击前往开启通知",
+                    trailing = {
+                        TextAction("去开启　›") { vm.openNotificationSettings() }
+                    }
+                )
+            }
+            if (!exactAlarmsOk) {
+                DividerLine()
+                SettingsRow(
+                    name = "精确闹钟未授权",
+                    detail = "锁屏到点提醒可能延迟；点击允许后更准时",
+                    trailing = {
+                        TextAction("去允许　›") { vm.openExactAlarmSettings() }
+                    }
+                )
+            }
+            DividerLine()
+            SettingsRow(
+                name = "测试到点提醒",
+                detail = "立即发送一次高优先级到点通知与震动，不需要正在训练",
+                trailing = {
+                    TextAction("测试　›") { vm.testTargetAlert() }
+                }
+            )
         }
 
         SettingsGroupTitle("外观")
@@ -168,6 +199,25 @@ fun SettingsScreen(
                 detail = "检查备份后，选择合并或覆盖",
                 trailing = {
                     TextAction("导入　›") { onImport() }
+                }
+            )
+            DividerLine()
+            val syncDetail = when {
+                !state.sync.configured -> "当前构建未配置云环境"
+                !state.sync.signedIn -> "未开启 · 记录只在本机"
+                state.sync.phase == SyncPhase.NEED_UPLOAD -> "已登录 · 待首次上传确认"
+                state.sync.phase == SyncPhase.SYNCING -> "同步中…"
+                state.sync.pending > 0 -> "待同步 ${state.sync.pending} 条"
+                state.sync.phase == SyncPhase.ERROR -> state.sync.message ?: "同步失败"
+                state.sync.lastSyncAt != null ->
+                    "已开启 · 上次 ${Formatters.dateTime(state.sync.lastSyncAt)}"
+                else -> "已开启 · 等待首次同步"
+            }
+            SettingsRow(
+                name = "云同步",
+                detail = syncDetail,
+                trailing = {
+                    TextAction("管理　›") { vm.openCloudSync() }
                 }
             )
         }
