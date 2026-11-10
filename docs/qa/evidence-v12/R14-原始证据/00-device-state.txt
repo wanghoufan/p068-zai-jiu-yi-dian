@@ -1,0 +1,17 @@
+# R14 验收前设备状态（2026-11-10 17:14:09 CST）
+model=22101316C
+marketname=Redmi Note 12 Pro
+android=14 sdk=34
+    versionCode=4 minSdk=26 targetSdk=36
+    versionName=1.2.0
+    lastUpdateTime=2026-11-10 16:37:36
+      firstInstallTime=2026-11-06 08:51:25
+      firstInstallTime=1970-01-01 08:00:00
+screen=  mWakefulness=Awake
+low_power=0
+zen_mode=1
+alarm_volume=null
+media_volume=12
+exact_alarm_appop=No operations.
+Default mode: default
+can_schedule_exact=

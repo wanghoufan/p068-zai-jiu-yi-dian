@@ -1,0 +1,4 @@
+11-10 17:21:24.156 I/R14_MARK(27532): TEST2_begin device_clock=17:21:24 target=01:00
+11-10 17:21:24.344 I/P068Voice(26707): cue=START minute=0 voicePlayed=true service=false sound=true voice=true
+11-10 17:21:26.275 I/R14_MARK(27552): TEST2_lock_at 17:21:26
+11-10 17:22:24.512 I/P068Voice(26707): service cue interval=0 target=true voicePlayed=true voice=true sound=true

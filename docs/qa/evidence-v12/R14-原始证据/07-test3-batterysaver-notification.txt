@@ -1,0 +1,46 @@
+    NotificationRecord(0x005fa3be: pkg=com.wanghoufan.zaijiuyidian user=UserHandle{0} id=6802 tag=null importance=4 key=0|com.wanghoufan.zaijiuyidian|6802|null|10391 bbbc=0: Notification(channel=training_alert shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x10 color=0x00000000 category=alarm vis=PUBLIC))
+      uid=10391 userId=0
+      opPkg=com.wanghoufan.zaijiuyidian
+      icon=Icon(typ=RESOURCE pkg=com.wanghoufan.zaijiuyidian id=0x7f040007)
+      flags=0x10
+      originalFlags=0x10
+      pri=1
+      key=0|com.wanghoufan.zaijiuyidian|6802|null|10391
+      seen=false
+      groupKey=0|com.wanghoufan.zaijiuyidian|6802|null|10391
+      notification=
+            fullscreenIntent=null
+            contentIntent=PendingIntent{f90cc1f: PendingIntentRecord{30b941c com.wanghoufan.zaijiuyidian startActivity (allowlist: 2649907:+30s0ms/0/NOTIFICATION_SERVICE/NotificationManagerService)}}
+            deleteIntent=null
+            number=0
+            groupAlertBehavior=0
+            when=1794302860794
+            tickerText=null
+            vis=1
+            contentView=null
+            bigContentView=null
+            headsUpContentView=null
+            color=0x00000000
+            timeout=unknown
+            extras={
+                android.title=String (训练到点了)
+                android.reduced.images=Boolean (true)
+                android.subText=null
+                android.template=String (android.app.Notification$BigTextStyle)
+                android.showChronometer=Boolean (false)
+                android.text=String (「平板支撑」目标 01:00 已到)
+                android.progress=Integer (0)
+                androidx.core.app.extra.COMPAT_TEMPLATE=String (androidx.core.app.NotificationCompat$BigTextStyle)
+                android.progressMax=Integer (0)
+                android.appInfo=ApplicationInfo (ApplicationInfo{dd28b6c com.wanghoufan.zaijiuyidian})
+                android.showWhen=Boolean (true)
+                android.largeIcon=null
+                android.bigText=String (「平板支撑」目标 01:00 已到)
+                android.infoText=null
+                android.progressIndeterminate=Boolean (false)
+                android.remoteInputHistory=null
+            }
+      publicNotification=
+            None
+      stats=SingleNotificationStats{posttimeElapsedMs=377408838, posttimeToFirstClickMs=-1, posttimeToDismissMs=-1, airtimeCount=0, airtimeMs=0, currentAirtimeStartElapsedMs=-1, airtimeExpandedMs=0, posttimeToFirstVisibleExpansionMs=-1, currentAirtimeExpandedStartElapsedMs=-1, requestedImportance=4, naturalImportance=4, isNoisy=true}
+      mContactAffinity=0.0

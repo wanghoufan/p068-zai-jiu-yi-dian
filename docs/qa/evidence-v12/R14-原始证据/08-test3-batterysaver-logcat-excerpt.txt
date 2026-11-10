@@ -1,0 +1,5 @@
+11-10 17:25:55.703 I/R14_MARK(28917): TEST3_begin device_clock=17:25:55 target=01:00 battery_saver=1
+11-10 17:25:55.882 I/P068Voice(26707): cue=START minute=0 voicePlayed=true service=false sound=true voice=true
+11-10 17:25:57.822 I/R14_MARK(28931): TEST3_lock_at 17:25:57
+11-10 17:26:55.894 I/P068Voice(26707): service cue interval=0 target=true voicePlayed=true voice=true sound=true
+11-10 17:27:40.822 D/AlarmManager( 1547): mPendingIntent -> PendingIntent{db35747: PendingIntentRecord{1ddfb74 com.wanghoufan.zaijiuyidian broadcastIntent}}

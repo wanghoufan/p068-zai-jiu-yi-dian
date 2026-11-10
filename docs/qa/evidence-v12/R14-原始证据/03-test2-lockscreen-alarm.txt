@@ -1,0 +1,7 @@
+    RTC_WAKEUP #4: Alarm{c4584b1 uId =10391 creatorUid =10391 packageName =com.wanghoufan.zaijiuyidian sourcePackage =com.wanghoufan.zaijiuyidian operation =PendingIntent{9ed9d96: PendingIntentRecord{833fd17 com.wanghoufan.zaijiuyidian broadcastIntent}} type 0 origWhen 1794302544217 whenElapsed 377136910 com.wanghoufan.zaijiuyidian}
+      tag=*walarm*:com.wanghoufan.zaijiuyidian/.audio.TargetAlarmReceiver
+      type=RTC_WAKEUP origWhen=2026-11-10 17:22:24.217 window=+44s998ms repeatInterval=0 count=0 flags=0x20
+      policyWhenElapsed: requester=+54s799ms app_standby=-5s199ms device_idle=-- battery_saver=-5s199ms tare=-5s199ms power_pending=--
+      whenElapsed=+54s799ms maxWhenElapsed=+1m39s797ms
+      operation=PendingIntent{9ed9d96: PendingIntentRecord{833fd17 com.wanghoufan.zaijiuyidian broadcastIntent}}
+      idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=-1, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=1, android:broadcast.flags=8}]
