@@ -31,7 +31,7 @@
   - README 中英两份已同批改写为「默认只在本机，主动登录并确认首传后才联网」；R13 移交收口。
   - 后台提醒（R14）已修复并真机验收：高优先级渠道 `training_alert`（importance=4、系统闹钟铃声、`USAGE_ALARM`）＋独立通知 6802（category=alarm）、提示音改闹钟流、3 次长震、精确闹钟 `RTC_WAKEUP` 兜底、结束取消；到点只发一次（2 秒去重），常驻通知只在状态变化时更新。Note 11 5G（媒体音量 0、闹钟音量 10、后台 1 分钟）通过，证据 `docs/qa/evidence-v12/notification-alert-2026-11-10.txt`。
   - APK：`dist/P068-zai-jiu-yi-dian-v1.2.0-debug.apk`，17,010,870 字节，SHA-256 `0d22afbd144e06b2b9afa3e23f9ffe44b69286d774a4023053c5494d68fc0811`，versionCode 4 / 1.2.0；三台安装包哈希一致。
-  - 云端基准（2026-11-10 用户定「以 OPPO 为准」）：旧数据备份到 `dist/backup-cloud-before-oppo-2026-11-10.json` 后清空，OPPO 首传完成，云端现为 OPPO 的 3 项目 / 4 记录。Note 11 / 22101316C 本机训练数据备份到 `dist/preclean-*.db` 后清空并退出同步；用户明确不再看这两台，不要为镜像再让它们首传。
+  - 云端基准（2026-11-10 用户定「以 OPPO 为准」）：旧数据备份到 `dist/backup-cloud-before-oppo-2026-11-10.json` 后清空；OPPO 首传完成（待复核：本机 `sync_state` 无拉取游标，本机侧无法自证），OPPO 首传后云端应为 3 项目 / 4 记录（2026-11-10 本机侧 3/4 已核，云端待有认证凭据复核）。Note 11 / 22101316C 本机训练数据备份到 `dist/preclean-*.db` 后清空并退出同步；用户明确不再看这两台，不要为镜像再让它们首传。
   - 推送与登记：1.2.0(4) 已推 3 台（Note 11 5G、22101316C、OPPO PLG110），`firstInstallTime` 未变、base.apk 哈希一致；版本台账已登记（回读 ✓，commit `fd954ac-dirty`）。
 
 ## §2 下一步
