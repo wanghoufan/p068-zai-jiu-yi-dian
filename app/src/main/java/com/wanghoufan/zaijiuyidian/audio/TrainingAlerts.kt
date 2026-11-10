@@ -33,6 +33,13 @@ object TrainingAlerts {
 
     private val vibrationPattern = longArrayOf(0L, 500L, 300L, 500L, 300L, 500L)
 
+    // 精确定时不可用时的降级闹钟最晚在 45 秒窗口末端才投递，去重窗必须覆盖它，
+    // 否则兜底闹钟会把同一次到点再响一遍。
+    private const val DUPLICATE_WINDOW_MS = 60_000L
+
+    private const val PREFS = "training_alerts"
+    private const val KEY_LAST_ALERT_WALL = "last_alert_wall"
+
     @Volatile
     private var lastNotifyElapsed = 0L
 
@@ -67,10 +74,26 @@ object TrainingAlerts {
     }
 
     fun notifyTarget(context: Context, projectName: String?, targetSec: Int, vibrate: Boolean = true) {
-        // 服务与精确闹钟可能在到点瞬间同时触发，2 秒内只发一次，避免被系统判为噪声应用
+        // 服务、前台页与兜底闹钟可能先后触发同一次到点：进程内用 elapsed 去重，
+        // 进程被杀后重启用墙钟时间覆盖 45 秒降级窗口，避免二次提醒。
         val now = SystemClock.elapsedRealtime()
-        if (now - lastNotifyElapsed < 2_000L) return
+        val nowWall = System.currentTimeMillis()
+        val lastWall = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getLong(KEY_LAST_ALERT_WALL, 0L)
+        if (now - lastNotifyElapsed < DUPLICATE_WINDOW_MS) {
+            android.util.Log.i("P068Alert", "skip duplicate: elapsed_ms=${now - lastNotifyElapsed}")
+            return
+        }
+        if (lastWall > 0L && nowWall - lastWall < DUPLICATE_WINDOW_MS) {
+            android.util.Log.i("P068Alert", "skip duplicate: wall_ms=${nowWall - lastWall}")
+            return
+        }
         lastNotifyElapsed = now
+        android.util.Log.i("P068Alert", "post target alert: project=$projectName target=$targetSec vibrate=$vibrate")
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_LAST_ALERT_WALL, nowWall)
+            .apply()
         ensureChannel(context)
         val nm = manager(context) ?: return
         val name = projectName?.takeIf { it.isNotBlank() } ?: "本次训练"

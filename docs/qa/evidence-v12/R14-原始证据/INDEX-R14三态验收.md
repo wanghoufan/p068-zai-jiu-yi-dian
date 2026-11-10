@@ -88,3 +88,27 @@ adb -s <serial> exec-out screencap -p > <file>.png
 - TEST2 会话在恢复前台时被一次上滑手势误触结束（非产品行为，结论已按 17:22:24 的到点证据判定）；TEST3 改用 `wm dismiss-keyguard` 解锁，未再复现。
 - 系统设置复原：`low_power` 1→0（`mSettingBatterySaverEnabled=false`）；`zen_mode` 临时改 0 后已复原 1；媒体音量未改动。
 - 整轮未登录云端、未做任何云端写操作。
+
+## 4. D1 修复后复测（2026-11-10 17:52–17:59，versionCode 6 / 1.2.2）
+
+修复方式：`TrainingAlerts.notifyTarget` 去重窗从 2 s 提升到 60 s，覆盖「无精确闹钟权限时最晚 +45 s」的降级窗口；同时把最近提醒时间写入 SharedPreferences，进程被杀后重启也能挡住兜底闹钟的重复提醒。
+
+| 场景 | 到点提醒 | 兜底闹钟投递 | 结果 |
+|---|---|---|---|
+| A 切后台 | 17:53:31.152（`service cue target=true`）→ 17:53:31.161 post 6802 | 17:54:15.678，比提醒晚 44.52 s | `skip duplicate: elapsed_ms=44519`，**未二次提醒** |
+| B 锁屏 | 17:56:03.677 → 17:56:03.687 post 6802 | 17:56:48.397，晚 44.71 s | `skip duplicate: elapsed_ms=44711`，**未二次提醒** |
+| C 省电模式+锁屏 | 17:58:30.754 → 17:58:30.764 post 6802 | 17:59:15.678，晚 44.92 s | `skip duplicate: elapsed_ms=44915`，**未二次提醒** |
+
+- 每态 `P068Alert: post target alert` 各 1 次、`P068Voice: service cue ... target=true` 各 1 次、`skip duplicate` 各 1 次；三态均**只响一次**。
+- 省电测试前 `low_power=0` → 置 1 → 测后复原 0（已回读确认）；三次训练结束均选「不计入」，回读页面为「准备开始」，历史未污染。
+- 原始证据（已入库）：`D1复测/A-background-logcat.txt`、`B-lockscreen-logcat.txt`、`C-batterysaver-logcat.txt`；三份 `*-notification.txt` 为 `dumpsys notification --noredact` 的**裁剪摘录**（只保留本应用 id=6802 的记录，含 `when`、`channel=training_alert`、`importance=4`、`category=alarm`、`vis=PUBLIC`）。
+- 截图取证本轮**失败、未入库**：`A-background-notification-shade.png` 实为桌面（截图时通知栏未展开，画面不含 6802），`B-lockscreen.png` / `C-batterysaver.png` 为全黑（熄屏态 `screencap` 结果）。因此本轮**没有「通知在锁屏/通知栏可见」的视觉证据**；D2 维持 R14 首轮结论（锁屏未见通知，仍未定位），已记入 `docs/risks.md` R15。
+- 全量 dump（含其他应用通知正文）与三张原始截图（含桌面应用列表）属真实隐私数据，已移出仓库至 `.local/evidence-raw/D1复测/`，不入库。
+
+#### 60 秒去重窗不会误伤下一次真实到点（口径）
+
+- **训练目标最短 1 分钟**：现场目标经 `Math.round(minutes * 60).coerceIn(60, 18_000)` 落库（[AppViewModel.kt](file:///Users/zzymima0000/Developer/coding/1.Active/068-ing-再久一点/app/src/main/java/com/wanghoufan/zaijiuyidian/ui/AppViewModel.kt#L538)、[同文件 L619](file:///Users/zzymima0000/Developer/coding/1.Active/068-ing-再久一点/app/src/main/java/com/wanghoufan/zaijiuyidian/ui/AppViewModel.kt#L619)、[L758](file:///Users/zzymima0000/Developer/coding/1.Active/068-ing-再久一点/app/src/main/java/com/wanghoufan/zaijiuyidian/ui/AppViewModel.kt#L758)），自定义目标输入 0.5 分钟也会被抬到 60 秒（`Sheets.kt` 的「分钟（1～300）、最多 1 位小数」）。
+- **同一会话只提醒一次**：训练会话用 `notifiedAtTarget` 标记，到点后继续训练不会再发第二次。
+- **因此两次真实到点之间必然 > 60 s**：下一次提醒只能来自新会话，新会话起点晚于上一次提醒时刻，最短目标 60 s ⇒ 间隔严格大于 60 000 ms，不会被 `DUPLICATE_WINDOW_MS = 60_000` 吞掉。三态实测的 `skip duplicate` 差值 44.52 / 44.71 / 44.92 s，均落在「兜底闹钟窗口 45 s + 0.5 s 内」，属同一目标的重复投递。
+- **边界（未实测）**：跨进程去重依赖墙钟；若系统时间被回拨且进程恰好重启，理论上会多挡一小段（概率极低，未做实测）。
+

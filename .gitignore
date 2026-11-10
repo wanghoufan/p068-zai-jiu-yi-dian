@@ -34,6 +34,7 @@ secrets.*
 
 # 本地数据与缓存
 local.properties
+/.local/
 docs/填密钥-*.md
 .codeartsdoer/
 *.log

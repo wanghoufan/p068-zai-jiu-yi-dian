@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -30,11 +34,13 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wanghoufan.zaijiuyidian.domain.Formatters
 import com.wanghoufan.zaijiuyidian.domain.Project
 import com.wanghoufan.zaijiuyidian.domain.TimerMath
+import com.wanghoufan.zaijiuyidian.domain.TrainingMode
 import com.wanghoufan.zaijiuyidian.domain.TrainingSession
 import com.wanghoufan.zaijiuyidian.ui.AppViewModel
 import com.wanghoufan.zaijiuyidian.ui.Sheet
@@ -75,9 +81,11 @@ fun TrainScreen(state: UiState, vm: AppViewModel, modifier: Modifier = Modifier)
         TopTitle("时长", eyebrow = "目标倒计时 · 完整计时训练")
 
         ProjectSelector(
-            project = project,
+            projects = state.projects.filter { !it.isArchived && it.mode == TrainingMode.TIME },
+            selectedId = project?.id,
             enabled = !running,
-            onClick = { if (!running) vm.openSheet(Sheet.ProjectPicker) }
+            onSelect = { vm.selectProject(it) },
+            onManage = { if (!running) vm.openSheet(Sheet.ProjectPicker) }
         )
 
         if (state.repDraft != null) {
@@ -177,34 +185,87 @@ fun TrainScreen(state: UiState, vm: AppViewModel, modifier: Modifier = Modifier)
 }
 
 @Composable
-private fun ProjectSelector(project: Project?, enabled: Boolean, onClick: () -> Unit) {
+private fun ProjectSelector(
+    projects: List<Project>,
+    selectedId: String?,
+    enabled: Boolean,
+    onSelect: (String) -> Unit,
+    onManage: () -> Unit
+) {
     val p = AppTheme.palette
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(p.card)
-            .border(1.dp, p.hair, RoundedCornerShape(14.dp))
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column {
-            Text(
-                project?.name ?: "暂无项目",
-                color = p.ink,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                if (enabled) "计时训练 · 当前项目" else "训练进行中，项目已锁定",
-                color = p.sub,
-                fontSize = 11.sp,
-                modifier = Modifier.padding(top = 3.dp)
-            )
+    if (projects.isEmpty()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(p.card)
+                .border(1.dp, p.hair, RoundedCornerShape(14.dp))
+                .clickable(enabled = enabled, onClick = onManage)
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("还没有计时项目，点这里新建", color = p.sub, fontSize = 15.sp)
+            Text("＋", color = p.accentDark, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
-        Text("⌄", color = p.sub, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        return
+    }
+    if (projects.size <= 4) {
+        // 等分宽度在 4 个项目 + 应用字号 115% 时会把四字项目名截成「平板…」，
+        // 改为按内容取宽、放不下时横向滑动，名字不被截断。
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            projects.forEach { project ->
+                ProjectTab(
+                    name = project.name,
+                    selected = project.id == selectedId,
+                    enabled = enabled
+                ) { onSelect(project.id) }
+            }
+        }
+    } else {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(projects, key = { it.id }) { project ->
+                ProjectTab(
+                    name = project.name,
+                    selected = project.id == selectedId,
+                    enabled = enabled
+                ) { onSelect(project.id) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProjectTab(
+    name: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    val p = AppTheme.palette
+    val base = Modifier
+        .height(44.dp)
+        .widthIn(min = 56.dp, max = 150.dp)
+        .clip(RoundedCornerShape(12.dp))
+        .background(if (selected) p.accent2 else p.field)
+        .then(if (selected) Modifier.border(1.dp, p.accent, RoundedCornerShape(12.dp)) else Modifier)
+        .clickable(enabled = enabled, onClick = onClick)
+        .padding(horizontal = 12.dp)
+    Box(modifier = base, contentAlignment = Alignment.Center) {
+        Text(
+            text = name,
+            color = if (selected) p.accentDark else p.sub,
+            fontSize = 15.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

@@ -27,7 +27,7 @@
 - 现象（修复前）：设置 20/25 分钟倒计时，切后台或锁屏后到点没有可察觉的震动、铃声或通知；前台正常。
 - 实测（修复前，Note 11 5G，1 分钟）：服务在 60 秒整点触发（日志 `service cue interval=0 target=true voicePlayed=true`），计时与触发正确；但（a）提示音走媒体流，该机媒体音量 muted；（b）前台通知渠道 `training_timer` 为 IMPORTANCE_LOW + 无声音 + 无震动 + `setSilent(true)`；（c）系统勿扰模式开启。三者叠加＝无任何可察觉提醒。
 - 修复（按 A+B 落地）：A. 新增高优先级渠道 `training_alert`（importance=4、系统闹钟铃声、`USAGE_ALARM`）＋独立通知 6802（category=alarm），提示音改闹钟流、3 次长震、带「结束保存/继续训练」；B. 精确闹钟 `RTC_WAKEUP` 兜底（进程被杀也能提醒）；结束/放弃/暂停取消，继续后重排。
-- 附带修复：到点只发一次（2 秒去重），常驻通知只在状态变化时更新——此前每秒刷新常驻通知 + 服务/闹钟双发，触发 MIUI「Muting recently noisy」导致提醒被静音。
+- 附带修复：到点只发一次（去重窗 60 s，跨进程用 SharedPreferences 记住上次提醒时间）——此前每秒刷新常驻通知 + 服务/闹钟双发，触发 MIUI「Muting recently noisy」导致提醒被静音；2 s 去重窗挡不住无精确定时权限时在 +45 s 才投递的兜底闹钟，已在 2026-11-10 复测修复（`docs/qa/evidence-v12/R14-原始证据/INDEX-R14三态验收.md` §4）。
 - 验收（Note 11 5G，媒体音量 0、闹钟音量 10、后台 1 分钟）：可察觉响铃 + 震动 + 通知，到点仅一次。证据：`docs/qa/evidence-v12/notification-alert-2026-11-10.txt`。
 - 边界（仍存在）：勿扰与 OEM 省电属系统限制，渠道不能自行 `bypassDnd`；用户需放行提醒/关闭勿扰。`adb` 强开 `zen_mode` 未生效，**未取得勿扰开启下可通过的结论**，勿扰开启时的行为不得写成已通过。
 

@@ -1,0 +1,5 @@
+--------- beginning of main
+11-10 17:52:30.827  4759  4759 I P068Voice: cue=START minute=0 voicePlayed=true service=false sound=true voice=true
+11-10 17:53:31.152  4759  4759 I P068Voice: service cue interval=0 target=true voicePlayed=true voice=true sound=true
+11-10 17:53:31.161  4759  4759 I P068Alert: post target alert: project=平板支撑 target=60 vibrate=false
+11-10 17:54:15.678  4759  4759 I P068Alert: skip duplicate: elapsed_ms=44519
