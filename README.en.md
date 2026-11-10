@@ -30,7 +30,7 @@ A **local-first by default** Android app with two training modes: a real countdo
 - Sign-in: username + password only (CloudBase authentication). Phone, email, WeChat and anonymous sign-in are not enabled.
 - Account isolation: cloud rows are scoped by owner (`owner_uid`), so an account only reads its own data.
 - First upload: after sign-in the app shows a preview such as "2 projects, 5 sessions on this device" and uploads only after you confirm.
-- Sync model: add/edit/delete first writes to a local outbox, then uploads incrementally when online. A second device signed into the same account pulls increments by a server cursor; there is no whole-database overwrite.
+- Sync model: add/edit/delete first writes to a local outbox; the app then tries one upload immediately after saving, and also pulls increments by a server cursor (no whole-database overwrite). There is no network listener, background retry, or periodic polling — to see another device's changes, tap "Sync now", or make one more local change to trigger it.
 - Offline/failure: training keeps working, changes wait locally, and a manual "Sync now" retries after the network returns.
 - Sign-out: local tokens and sync state are cleared; local training data stays and cloud data is not deleted by signing out.
 - Scope: sized for one account across two devices; quota, expiry and threshold handling are recorded in `docs/plan/共享云环境登记簿-P068.md`.
