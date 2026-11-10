@@ -102,7 +102,8 @@ adb -s <serial> exec-out screencap -p > <file>.png
 - 每态 `P068Alert: post target alert` 各 1 次、`P068Voice: service cue ... target=true` 各 1 次、`skip duplicate` 各 1 次；三态均**只响一次**。
 - 省电测试前 `low_power=0` → 置 1 → 测后复原 0（已回读确认）；三次训练结束均选「不计入」，回读页面为「准备开始」，历史未污染。
 - 原始证据（已入库）：`D1复测/A-background-logcat.txt`、`B-lockscreen-logcat.txt`、`C-batterysaver-logcat.txt`；三份 `*-notification.txt` 为 `dumpsys notification --noredact` 的**裁剪摘录**（只保留本应用 id=6802 的记录，含 `when`、`channel=training_alert`、`importance=4`、`category=alarm`、`vis=PUBLIC`）。
-- 截图取证本轮**失败、未入库**：`A-background-notification-shade.png` 实为桌面（截图时通知栏未展开，画面不含 6802），`B-lockscreen.png` / `C-batterysaver.png` 为全黑（熄屏态 `screencap` 结果）。因此本轮**没有「通知在锁屏/通知栏可见」的视觉证据**；D2 维持 R14 首轮结论（锁屏未见通知，仍未定位），已记入 `docs/risks.md` R15。
+- 截图取证本轮**失败、未入库**：`A-background-notification-shade.png` 实为桌面（截图时通知栏未展开，画面不含 6802），`B-lockscreen.png` / `C-batterysaver.png` 为全黑（熄屏态 `screencap` 结果）。因此本轮**没有「通知在锁屏/通知栏可见」的视觉证据**。
+- **D1 结论范围（只到这一步）**：本节的通过结论仅主张「同一次到点只提醒一次」，依据是 `P068Alert` 日志与三态复测（各 1 次 post、各 1 次 skip duplicate），**不含「通知是否可见」**。通知可见性属 D2，维持 R14 首轮「仍未定位」结论（`docs/risks.md` R15）；**D1 通过不等于 D2 通过**，后续不得据此宣称锁屏提醒已可用。
 - 全量 dump（含其他应用通知正文）与三张原始截图（含桌面应用列表）属真实隐私数据，已移出仓库至 `.local/evidence-raw/D1复测/`，不入库。
 
 #### 60 秒去重窗不会误伤下一次真实到点（口径）
