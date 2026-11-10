@@ -31,6 +31,17 @@
 - 验收（Note 11 5G，媒体音量 0、闹钟音量 10、后台 1 分钟）：可察觉响铃 + 震动 + 通知，到点仅一次。证据：`docs/qa/evidence-v12/notification-alert-2026-11-10.txt`。
 - 边界（仍存在）：勿扰与 OEM 省电属系统限制，渠道不能自行 `bypassDnd`；用户需放行提醒/关闭勿扰。`adb` 强开 `zen_mode` 未生效，**未取得勿扰开启下可通过的结论**，勿扰开启时的行为不得写成已通过。
 
+### R15 锁屏不显示到点通知（D2，2026-11-10 只读定位，未定位）
+- 现象：R14 三态验收中，锁屏状态下到点提醒的通知 6802 已发出（`dumpsys notification --noredact` 可见），但锁屏界面截图两次都看不到该通知，只看到媒体控制与 USB 提示。
+- 已排除（Note 12 Pro / Android 14，只读核对）：
+  - 渠道 `training_alert` 的 `mLockscreenVisibility=-1000`，与系统渠道取值一致，非应用设成 VISIBILITY_SECRET；
+  - `lock_screen_show_notifications=1`、`lock_screen_allow_private_notifications=1`；
+  - 渠道 `importance=DEFAULT`（`userSet=false`，未被用户降级）；
+  - 通知 `vis=PUBLIC`。
+- 唯一缺口：HyperOS 的「每应用锁屏通知」开关不在 `settings` 可读范围，无法用 adb 只读取值。
+- 状态：**仍未定位**；**待用户确认该应用在系统设置里的锁屏通知开关值**（系统设置 → 通知与控制中心 → 再久一点 → 锁屏通知）。
+- 边界：不做改系统设置、不改应用代码的处置；未确认开关值前，不得写成「应用缺陷」或「系统策略已确认」。
+
 ## 2. 中影响
 
 ### R4 MIUI「USB 安装」自动关闭
