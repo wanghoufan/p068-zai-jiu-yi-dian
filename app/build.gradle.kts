@@ -21,8 +21,8 @@ android {
         applicationId = "com.wanghoufan.zaijiuyidian"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "1.2.4"
+        versionCode = 9
+        versionName = "1.2.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "CLOUDBASE_ENV_ID", prop("CLOUDBASE_ENV_ID"))
         buildConfigField("String", "CLOUDBASE_REGION", prop("CLOUDBASE_REGION"))

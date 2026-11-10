@@ -39,8 +39,10 @@ import com.wanghoufan.zaijiuyidian.ui.components.ChartNote
 import com.wanghoufan.zaijiuyidian.ui.components.DropdownField
 import com.wanghoufan.zaijiuyidian.ui.components.EmptyBlock
 import com.wanghoufan.zaijiuyidian.ui.components.PillTabs
+import com.wanghoufan.zaijiuyidian.ui.components.ProjectTabs
 import com.wanghoufan.zaijiuyidian.ui.components.SectionHeader
 import com.wanghoufan.zaijiuyidian.ui.components.StatCard
+import com.wanghoufan.zaijiuyidian.ui.components.TabItem
 import com.wanghoufan.zaijiuyidian.ui.components.TextAction
 import com.wanghoufan.zaijiuyidian.ui.components.TopTitle
 import com.wanghoufan.zaijiuyidian.ui.components.ValueGroupTable
@@ -86,22 +88,22 @@ fun HistoryScreenV11(state: UiState, vm: AppViewModel, modifier: Modifier = Modi
         }
 
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DropdownField(
-                    label = "项目",
-                    value = projectFilterLabel(projectFilter, state),
-                    options = projectFilterOptions(state, projectFilter),
-                    onSelect = { vm.setProjectFilter(it) },
-                    modifier = Modifier.weight(1f)
-                )
-                DropdownField(
-                    label = "时间",
-                    value = rangeLabel(state.settings.lastRangeDays),
-                    options = rangeOptions,
-                    onSelect = { key -> vm.setRangeDays(if (key == "all") null else key.toInt()) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            ProjectTabs(
+                items = historyTabItems(state),
+                selectedId = historyTabSelectedId(projectFilter, state),
+                enabled = true,
+                onSelect = { id -> vm.setProjectFilter(if (id == ALL_TAB) "all" else id) }
+            )
+        }
+
+        item {
+            DropdownField(
+                label = "时间",
+                value = rangeLabel(state.settings.lastRangeDays),
+                options = rangeOptions,
+                onSelect = { key -> vm.setRangeDays(if (key == "all") null else key.toInt()) },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         item {
@@ -248,26 +250,18 @@ private val rangeOptions = listOf(
 private fun rangeLabel(days: Int?): String =
     if (days == null) "全部时间" else "近 $days 天"
 
-private fun projectFilterOptions(state: UiState, projectFilter: String): List<Pair<String, String>> {
-    val currentId = state.selectedProject?.id
-    val options = mutableListOf<Pair<String, String>>()
-    options += "current" to "当前项目 · ${state.selectedProject?.name ?: "未选择"}"
-    options += "all" to "全部项目"
-    state.projects.forEach { project ->
-        if (project.id != currentId) {
-            val name = "${project.name}（${project.modeLabel}${if (project.isArchived) " · 已归档" else ""}）"
-            options += project.id to name
-        }
-    }
-    if (options.none { it.first == projectFilter }) {
-        options += projectFilter to (state.projects.firstOrNull { it.id == projectFilter }?.name ?: "当前项目")
-    }
-    return options
-}
+private const val ALL_TAB = "__all__"
 
-private fun projectFilterLabel(projectFilter: String, state: UiState): String =
-    projectFilterOptions(state, projectFilter).firstOrNull { it.first == projectFilter }?.second
-        ?: "当前项目 · ${state.selectedProject?.name ?: "未选择"}"
+private fun historyTabItems(state: UiState): List<TabItem> =
+    listOf(TabItem(ALL_TAB, "全部项目")) +
+        state.projects.filter { !it.isArchived }.map { TabItem(it.id, it.name) }
+
+private fun historyTabSelectedId(projectFilter: String, state: UiState): String? =
+    when (projectFilter) {
+        "all" -> ALL_TAB
+        "current" -> state.selectedProject?.id
+        else -> projectFilter
+    }
 
 @Composable
 private fun ChartCard(

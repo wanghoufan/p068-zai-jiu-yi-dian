@@ -38,8 +38,10 @@ import com.wanghoufan.zaijiuyidian.ui.UiState
 import com.wanghoufan.zaijiuyidian.ui.components.AppCard
 import com.wanghoufan.zaijiuyidian.ui.components.AppTextField
 import com.wanghoufan.zaijiuyidian.ui.components.PrimaryButton
+import com.wanghoufan.zaijiuyidian.ui.components.ProjectTabs
 import com.wanghoufan.zaijiuyidian.ui.components.SecondaryButton
 import com.wanghoufan.zaijiuyidian.ui.components.SectionHeader
+import com.wanghoufan.zaijiuyidian.ui.components.TabItem
 import com.wanghoufan.zaijiuyidian.ui.components.TextAction
 import com.wanghoufan.zaijiuyidian.ui.components.TopTitle
 import com.wanghoufan.zaijiuyidian.ui.theme.AppTheme
@@ -78,10 +80,13 @@ fun RepsScreen(state: UiState, vm: AppViewModel, modifier: Modifier = Modifier) 
             return@Column
         }
 
-        ProjectSelector(
-            project = project,
+        ProjectTabs(
+            items = state.projects
+                .filter { !it.isArchived && it.isReps }
+                .map { TabItem(it.id, it.name) },
+            selectedId = project.id,
             enabled = draft == null && state.active == null,
-            onClick = { vm.openSheet(Sheet.ProjectPicker) }
+            onSelect = { vm.selectProject(it) }
         )
 
         if (otherDraft != null) {
@@ -256,33 +261,6 @@ fun RepsScreen(state: UiState, vm: AppViewModel, modifier: Modifier = Modifier) 
             }
         )
         LastRepsCard(project = project, state = state)
-    }
-}
-
-@Composable
-private fun ProjectSelector(project: Project, enabled: Boolean, onClick: () -> Unit) {
-    val p = AppTheme.palette
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(p.card)
-            .border(1.dp, p.hair, RoundedCornerShape(14.dp))
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column {
-            Text(project.name, color = p.ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            Text(
-                "计次训练 · 默认 ${project.plannedSets} 组 × ${project.targetRepsPerSet} 次",
-                color = p.sub,
-                fontSize = 11.sp,
-                modifier = Modifier.padding(top = 3.dp)
-            )
-        }
-        Text("⌄", color = p.sub, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }
 
