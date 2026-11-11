@@ -8,7 +8,7 @@
 |---|---|
 | 开工路由、红线、索引 | `AGENTS.md`（唯一真源） |
 | 架构与构建事实（含云端对象） | `docs/architecture-facts.md` |
-| 未决风险与待验证项 | `docs/risks.md`（R14 已修实测、R15/R16 未定位、R17 待决） |
+| 未决风险与待验证项 | `docs/risks.md`（R14 已修实测、R15/R16 未定位、R17 待决、**R19 云端停火**） |
 | 踩坑与审查交付约定 | `agent.md` |
 | 经验条目 | `经验一句话.md` |
 | V1.2 云同步计划 | `docs/plan/P068-V1.2-Cloud-Sync-Plan.md` |
@@ -27,12 +27,13 @@
 - 冲突：两机同改实测——B 被 0 行更新拦下、云端未覆盖；两版落 `sync_state`，UI 可「用本机/云端覆盖」，本机覆盖路径已验（AC05 PASS）。
 - 后台提醒 R14：高优先级渠道 `training_alert`＋通知 6802＋闹钟流＋`RTC_WAKEUP` 兜底，三态验收通过（`docs/qa/evidence-v12/R14-原始证据/INDEX-R14三态验收.md`）。
 - APK：`dist/P068-zai-jiu-yi-dian-v1.2.5-debug.apk`，16,746,908 字节，versionCode 9 / 1.2.5（以 `output-metadata.json` 现读为准）；三台装机 base.apk SHA-256 均为 `1c86cbdd75c1…97c0`。
-- 推送：1.2.5(9) 已覆盖安装 3 台（Note 11 5G、Note 12 Pro、OPPO PLG110），`firstInstallTime` 未变、数据条数前后一致；commit `da1352e`（未 push）；台账已登记但设备列仍两台（R17）。
+- 推送：1.2.5(9) 已覆盖安装 3 台（Note 11 5G、Note 12 Pro、OPPO PLG110），`firstInstallTime` 未变、数据条数前后一致；对应 commit `af228f0`（原 `da1352e`，已 push）；台账已登记但设备列仍两台（R17）。
 - 三页标签化：`ProjectTabs`/`TabItem` 共享组件，时长/次数/历史均按 v2 样张铺开（≤4 居中取宽 / >4 横向滑动）；**用户未对样张表态，不得记为已验收**。
 - 云端基准：OPPO 唯一（本机侧 3 项目/4 记录已核，云端待有凭据复核）；另两台已清空训练数据并退出同步，不要再触发首传。
 
 ## §2 下一步
 
+- **云端动作全部暂停（R19 停火令，2026-11-11 22:06 起 12 小时）**：下面两条都涉及云端请求，停火期内不执行；恢复前先报「要跑几次请求、验证什么」再动。
 - Next Single Action：补测 5 项 PARTIAL（AC01 抓包、AC03 幂等重放、AC08 过期 token、AC09 V3 恢复共存、AC10 额度巡检），证据落 `docs/qa/evidence-v12/`。
 - OPPO PLG110 云同步登录已过期（R16）：`zjyd` 密码已由账号管家登记在 Keychain（`027-account-cloudsync-p068`），OPPO 重新上线后只做登录恢复 + 同步验证，不碰输入法；不在线就继续挂着，不催。
 - **R18 输入法/数字键盘**：用户决定暂不处理，不再等 OPPO 上机、不改输入法或系统设置。
@@ -47,11 +48,12 @@
 - **R18 输入法/数字键盘（OPPO PLG110）**：用户决定暂不处理（2026-11-11），不再等上机、不改输入法、不出包；重开条件见 `docs/risks.md` §3。
 - 跨 APP 隔离未证明：两机同账号只证明用户隔离，不证明应用隔离。
 - V1.1-R2 遗留：AC02/12/13/14 PARTIAL、AC15 签收 OPEN（旧矩阵）。
-- Git：`da1352e`（代码）与 `f1d28a5`（复盘）均已本地提交、**均未 push**（共 8 个 commit 领先 origin/main）；`DISPATCH-LOG.jsonl`、`input-bugs/`、`USER_MODEL_OVERRIDE.md.旧版-2026-11-05` 仍未入库。
+- Git：主线 HEAD `efe6a2b` 已 push，与 `origin/main` 一致；历史重写后旧短号作废（`da1352e→af228f0`、`f1d28a5→d674e31`、`48de6cb→c3ee1a0`），备份分支 `backup/pre-sanitize-2026-11-11`（`48de6cb`）仅本地未推送；`DISPATCH-LOG.jsonl`、`input-bugs/`、`USER_MODEL_OVERRIDE.md.旧版-*` 已由 `.gitignore` 排除、未入库。
 
 ## §4 红线
 
 - 默认不 push；仅编排者明确指令并给出分支名时可 push（推前扫 diff，禁密钥/真实数据/未裁剪取证）。
+- 共享云环境 E-01 按 PG CPU 时间计费（本周期 985.09/3000，99.93% 为 PG CPU）：禁止批量/全量测试与循环同步，停火至 2026-11-12 10:06（详见 risks R19）。
 - 产品验收未落盘或关键 AC 未测、首次发布未签收，不得报完工。
 - 体系更新未同步两包与概览、或门禁未过，不得收工。
 - 不删历史（只迁移/归档）；不替用户判定文件无用。
