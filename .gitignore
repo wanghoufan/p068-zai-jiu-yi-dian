@@ -35,6 +35,11 @@ secrets.*
 # 本地数据与缓存
 local.properties
 /.local/
+# 治理账本与旧版覆盖文件（不入公开仓）
+docs/model/DISPATCH-LOG.jsonl
+USER_MODEL_OVERRIDE.md.旧版-*
+# 未裁剪取证原件（截图可能含他人通知，仅留本地）
+docs/qa/evidence-v12/input-bugs/
 docs/填密钥-*.md
 .codeartsdoer/
 *.log
